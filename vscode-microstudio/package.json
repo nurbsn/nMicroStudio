@@ -1,0 +1,320 @@
+{
+  "name": "vscode-microstudio",
+  "displayName": "MicroStudio for VS Code",
+  "description": "Integrates microStudio elements into VS Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "microstudio-explorer",
+          "title": "microStudio",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "microstudio-explorer": [
+        {
+          "type": "webview",
+          "id": "microstudio.projectDetails",
+          "name": "%view.projectSettings%"
+        },
+        {
+          "id": "microstudio.localProjects",
+          "name": "%view.localProjects%"
+        },
+        {
+          "id": "microstudio.remoteProjects",
+          "name": "%view.remoteProjects%"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "microscript",
+        "aliases": ["MicroScript", "microscript"],
+        "extensions": [".ms"]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "microscript",
+        "scopeName": "source.microscript",
+        "path": "./syntaxes/microscript.tmLanguage.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "microstudio.spriteEditor",
+        "displayName": "microStudio Sprite Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/sprites/*.png"
+          }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "microstudio.mapEditor",
+        "displayName": "microStudio Map Editor",
+        "selector": [
+          {
+            "filenamePattern": "**/maps/*.json"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "commands": [
+      {
+        "command": "microstudio.preview",
+        "title": "%command.preview%",
+        "icon": "$(play)"
+      },
+      {
+        "command": "microstudio.newSprite",
+        "title": "%command.newSprite%",
+        "icon": "$(file-media)"
+      },
+      {
+        "command": "microstudio.newMap",
+        "title": "%command.newMap%",
+        "icon": "$(map)"
+      },
+      {
+        "command": "microstudio.newSource",
+        "title": "%command.newSource%",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "microstudio.newSound",
+        "title": "%command.newSound%",
+        "icon": "$(unmute)"
+      },
+      {
+        "command": "microstudio.newMusic",
+        "title": "%command.newMusic%",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "microstudio.importAsset",
+        "title": "%command.importAsset%",
+        "icon": "$(file-add)"
+      },
+      {
+        "command": "microstudio.manageLibraries",
+        "title": "%command.manageLibraries%",
+        "icon": "$(package)"
+      },
+      {
+        "command": "microstudio.connect",
+        "title": "%command.connect%"
+      },
+      {
+        "command": "microstudio.setWorkspaceRoot",
+        "title": "%command.setWorkspaceRoot%",
+        "icon": "$(file-directory)"
+      },
+      {
+        "command": "microstudio.refreshProjects",
+        "title": "%command.refreshProjects%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "microstudio.cloneProject",
+        "title": "%command.cloneProject%",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "microstudio.login",
+        "title": "%command.login%",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "microstudio.logout",
+        "title": "%command.logout%",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "microstudio.openProject",
+        "title": "%command.openProject%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "microstudio.pushProject",
+        "title": "%command.pushProject%",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "microstudio.exportHtml",
+        "title": "%command.exportHtml%",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "microstudio.deleteLocalProject",
+        "title": "%command.deleteLocalProject%",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "microstudio.newSprite",
+          "when": "view == microstudio.projectDetails || view == microstudio.localProjects",
+          "group": "navigation@1"
+        },
+        {
+          "command": "microstudio.newMap",
+          "when": "view == microstudio.projectDetails || view == microstudio.localProjects",
+          "group": "navigation@2"
+        },
+        {
+          "command": "microstudio.newSource",
+          "when": "view == microstudio.projectDetails",
+          "group": "navigation@3"
+        },
+        {
+          "command": "microstudio.pushProject",
+          "when": "view == microstudio.projectDetails || view == microstudio.localProjects",
+          "group": "navigation@4"
+        },
+        {
+          "command": "microstudio.exportHtml",
+          "when": "view == microstudio.projectDetails",
+          "group": "navigation@5"
+        },
+        {
+          "command": "microstudio.manageLibraries",
+          "when": "view == microstudio.projectDetails",
+          "group": "navigation@6"
+        },
+        {
+          "command": "microstudio.preview",
+          "when": "view == microstudio.projectDetails || view == microstudio.localProjects",
+          "group": "navigation@7"
+        },
+        {
+          "command": "microstudio.refreshProjects",
+          "when": "view == microstudio.localProjects || view == microstudio.remoteProjects",
+          "group": "navigation@8"
+        },
+        {
+          "command": "microstudio.setWorkspaceRoot",
+          "when": "view == microstudio.localProjects",
+          "group": "navigation@9"
+        },
+        {
+          "command": "microstudio.login",
+          "when": "view == microstudio.remoteProjects && !microstudio:connected",
+          "group": "navigation"
+        },
+        {
+          "command": "microstudio.logout",
+          "when": "view == microstudio.remoteProjects && microstudio:connected",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "microstudio.cloneProject",
+          "when": "view == microstudio.remoteProjects && viewItem == remoteProject",
+          "group": "inline"
+        },
+        {
+          "command": "microstudio.pushProject",
+          "when": "view == microstudio.localProjects && viewItem == localProject",
+          "group": "inline@1"
+        },
+        {
+          "command": "microstudio.openProject",
+          "when": "view == microstudio.localProjects && viewItem == localProject",
+          "group": "inline@2"
+        },
+        {
+          "command": "microstudio.deleteLocalProject",
+          "when": "view == microstudio.localProjects && viewItem == localProject",
+          "group": "inline@3"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "microstudio.newSprite",
+          "group": "7_modification@1"
+        },
+        {
+          "command": "microstudio.newMap",
+          "group": "7_modification@2"
+        },
+        {
+          "command": "microstudio.newSource",
+          "group": "7_modification@3"
+        },
+        {
+          "command": "microstudio.manageLibraries",
+          "group": "7_modification@4"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "microStudio",
+      "properties": {
+        "microstudio.workspaceRoot": {
+          "type": "string",
+          "default": "",
+          "description": "%config.workspaceRoot%"
+        },
+        "microstudio.serverUrl": {
+          "type": "string",
+          "default": "https://microstudio.dev",
+          "description": "%config.serverUrl%"
+        },
+        "microstudio.language": {
+          "type": "string",
+          "enum": ["auto", "en", "pl"],
+          "enumDescriptions": [
+            "Automatic (match VS Code display language)",
+            "English",
+            "Polski"
+          ],
+          "default": "auto",
+          "description": "%config.language%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.80.0",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "eslint": "^8.39.0",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.4",
+    "webpack": "^5.81.0",
+    "webpack-cli": "^5.0.2"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  }
+}

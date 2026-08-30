@@ -1,0 +1,56 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MicroScript",
+  "patterns": [
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#numbers"
+    }
+  ],
+  "repository": {
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.microscript",
+          "match": "\\b(if|then|else|elsif|end|for|while|break|continue|return|and|or|not|class|extends|new|super|function|local|global)\\b"
+        },
+        {
+          "name": "constant.language.microscript",
+          "match": "\\b(true|false|null)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.microscript",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.microscript",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.microscript",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "numbers": {
+      "name": "constant.numeric.microscript",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    }
+  },
+  "scopeName": "source.microscript"
+}

@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "compile",
+      "path": "vscode-microstudio",
+      "problemMatcher": "$ts-webpack",
+      "isBackground": false,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "label": "npm: compile (vscode-microstudio)"
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "path": "vscode-microstudio",
+      "problemMatcher": "$ts-webpack-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "label": "npm: watch (vscode-microstudio)"
+    }
+  ]
+}

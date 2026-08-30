@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+out/
+**/out/
+
+# Temporary / extracted files
+temp_microstudio/
+*.zip
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.log
