@@ -2,9 +2,10 @@
   "name": "vscode-microstudio",
   "displayName": "MicroStudio for VS Code",
   "description": "Full IDE integration, visual editors, offline preview and cloud sync for microStudio",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "nurbsn",
   "license": "MIT",
+  "icon": "media/icon.png",
   "homepage": "https://github.com/nurbsn/nMicroStudio",
   "repository": {
     "type": "git",
