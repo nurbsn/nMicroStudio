@@ -22,5 +22,5 @@
   "command.deleteLocalProject": "Usuń",
   "config.workspaceRoot": "Główny folder na dysku zawierający projekty microStudio.",
   "config.serverUrl": "Adres serwera WebSocket microStudio (domyślnie: wss://microstudio.dev/).",
-  "config.language": "Język interfejsu rozszerzenia microStudio (auto, en, pl)."
+  "config.language": "Język interfejsu rozszerzenia microStudio (auto, en, pl, fr, de, es, it)."
 }

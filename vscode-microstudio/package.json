@@ -2,7 +2,7 @@
   "name": "vscode-microstudio",
   "displayName": "MicroStudio for VS Code",
   "description": "Full IDE integration, visual editors, offline preview and cloud sync for microStudio",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "nurbsn",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -298,11 +298,15 @@
         },
         "microstudio.language": {
           "type": "string",
-          "enum": ["auto", "en", "pl"],
+          "enum": ["auto", "en", "pl", "fr", "de", "es", "it"],
           "enumDescriptions": [
             "Automatic (match VS Code display language)",
             "English",
-            "Polski"
+            "Polski",
+            "Français",
+            "Deutsch",
+            "Español",
+            "Italiano"
           ],
           "default": "auto",
           "description": "%config.language%"

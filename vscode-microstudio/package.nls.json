@@ -22,5 +22,5 @@
   "command.deleteLocalProject": "Delete",
   "config.workspaceRoot": "Root directory containing local microStudio projects.",
   "config.serverUrl": "microStudio WebSocket server URL (default: wss://microstudio.dev/).",
-  "config.language": "Language for the microStudio extension interface (auto, en, pl)."
+  "config.language": "Language for the microStudio extension interface (auto, en, pl, fr, de, es, it)."
 }

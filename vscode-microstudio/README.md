@@ -37,7 +37,7 @@ A complete IDE integration and toolkit for [microStudio](https://microstudio.dev
   - `PIXI.*`, `BABYLON.*`, `M2D.*`, `M3D.*`, `Matter.*`
 
 ### 🌐 Internationalization (i18n)
-- **Supported Languages**: English (`en`) and Polish (`pl`).
+- **Supported Languages**: English (`en`), Polish (`pl`), French (`fr`), German (`de`), Spanish (`es`), and Italian (`it`).
 - Automatic detection based on VS Code display language (`vscode.env.language`) or manual override via `microstudio.language` setting.
 
 ---
