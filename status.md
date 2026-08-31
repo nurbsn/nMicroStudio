@@ -1,27 +1,26 @@
 # Stan Projektu: microStudio dla VS Code (`vscode-microstudio`)
 
 **Data zapisu**: 2026-08-30
-**Status**: Wdrożono wielojęzyczność (i18n) dla rozszerzenia z obsługą języka polskiego i angielskiego oraz możliwością łatwego dodawania kolejnych języków.
+**Status**: Projekt został pomyślnie opublikowany na GitHubie pod adresem https://github.com/nurbsn/nMicroStudio.
 
 ---
 
 ## 1. Podsumowanie ostatnich zmian
 
-### A. System Wielojęzyczności (i18n)
-- **Moduł `src/i18n.ts`**:
-  - Obsługa języków `pl` (polski) i `en` (angielski).
-  - Automatyczne wykrywanie języka z `vscode.env.language` oraz opcja wymuszenia w ustawieniach (`microstudio.language`).
-  - Podstawianie parametrów w komunikatach `{0}`, `{1}`.
-- **Pliki NLS**: `package.nls.json` (angielski) oraz `package.nls.pl.json` (polski).
-- **Integracja**:
-  - `ProjectSettingsView`: formularz, selektory silnika, typów i proporcji.
-  - `ResourceCreator`: tworzenie sprite'ów, map, skryptów, dźwięków, muzyki.
-  - `MicroStudioSync`: logowanie, pobieranie, wysyłanie projektów.
-  - `ProjectExplorer`: drzewa projektów lokalnych i zdalnych.
-  - `extension.ts`: eksport HTML5, podgląd.
+### A. Repozytorium GitHub
+- **Adres zdalny**: `https://github.com/nurbsn/nMicroStudio.git`
+- **Główna gałąź**: `main`
+- **Zawartość**:
+  - Kompletny kod wtyczki `vscode-microstudio`.
+  - Wizualne edytory Sprite'ów i Map.
+  - Formularz konfiguracji projektu z wyborem silnika graficznego.
+  - Dwukierunkowa synchronizacja z microStudio.dev (Push/Clone z inteligentnym parowaniem ID).
+  - Lokalny kompilator i exporter HTML5.
+  - IntelliSense dla MicroScript, PixiJS, Babylon.js, M2D, M3D, Matter.js.
+  - System wielojęzyczności (i18n) z obsługą języka polskiego i angielskiego.
+  - Szczegółowy plik `README.md` oraz `.gitignore`.
 
 ---
 
 ## 2. Aktualny stan projektu
-
-- **Kompilacja**: Pakiety Webpack (`npm run compile`) skompilowane bez błędów.
+- Repozytorium jest w 100% zsynchronizowane z GitHubem.

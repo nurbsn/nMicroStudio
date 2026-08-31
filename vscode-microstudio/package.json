@@ -1,12 +1,30 @@
 {
   "name": "vscode-microstudio",
   "displayName": "MicroStudio for VS Code",
-  "description": "Integrates microStudio elements into VS Code",
-  "version": "0.0.1",
+  "description": "Full IDE integration, visual editors, offline preview and cloud sync for microStudio",
+  "version": "0.1.0",
+  "publisher": "nurbsn",
+  "license": "MIT",
+  "homepage": "https://github.com/nurbsn/nMicroStudio",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nurbsn/nMicroStudio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nurbsn/nMicroStudio/issues"
+  },
+  "keywords": [
+    "microstudio",
+    "microscript",
+    "gamedev",
+    "pixi",
+    "babylon"
+  ],
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
   ],
   "activationEvents": [],

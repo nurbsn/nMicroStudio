@@ -1,0 +1,9 @@
+.vscode/**
+.vscode-test/**
+src/**
+tsconfig.json
+webpack.config.js
+build-assets.js
+**/*.ts
+**/*.map
+*.vsix
