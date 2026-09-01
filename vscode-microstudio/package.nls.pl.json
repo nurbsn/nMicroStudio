@@ -2,6 +2,9 @@
   "view.projectSettings": "Ustawienia Projektu",
   "view.localProjects": "Lokalne Projekty",
   "view.remoteProjects": "Zdalne Projekty",
+  "command.createAsset": "Dodaj Zasób...",
+  "command.createNewProject": "Nowy Projekt...",
+  "command.manageAccounts": "Zarządzaj Kontami...",
   "command.newSprite": "Nowy Sprite...",
   "command.newMap": "Nowa Mapa...",
   "command.newSource": "Nowy Skrypt...",
@@ -22,5 +25,5 @@
   "command.deleteLocalProject": "Usuń",
   "config.workspaceRoot": "Główny folder na dysku zawierający projekty microStudio.",
   "config.serverUrl": "Adres serwera WebSocket microStudio (domyślnie: wss://microstudio.dev/).",
-  "config.language": "Język interfejsu rozszerzenia microStudio (auto, en, pl, fr, de, es, it)."
+  "config.language": "Język interfejsu rozszerzenia microStudio (auto, en, pl, fr, de, es, it). Aby dodać nowy język, dodaj plik package.nls.<kod>.json i słownik w src/i18n.ts na GitHubie: https://github.com/nurbsn/nMicroStudio"
 }

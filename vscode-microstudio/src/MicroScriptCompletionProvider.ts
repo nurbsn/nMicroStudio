@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 
 interface DocItem {
     label: string;
@@ -422,15 +424,48 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
         }
     ];
 
+    private findProjectRoot(docUri: vscode.Uri): string | null {
+        let current = path.dirname(docUri.fsPath);
+        for (let i = 0; i < 5; i++) {
+            if (fs.existsSync(path.join(current, 'project.json'))) {
+                return current;
+            }
+            const parent = path.dirname(current);
+            if (parent === current) break;
+            current = parent;
+        }
+        return null;
+    }
+
+    private scanDirectoryFiles(dir: string, baseDir: string): string[] {
+        if (!fs.existsSync(dir)) return [];
+        let results: string[] = [];
+        try {
+            const list = fs.readdirSync(dir, { withFileTypes: true });
+            for (const item of list) {
+                const fullPath = path.join(dir, item.name);
+                if (item.isDirectory()) {
+                    results = results.concat(this.scanDirectoryFiles(fullPath, baseDir));
+                } else {
+                    const rel = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+                    results.push(rel);
+                }
+            }
+        } catch (e) {}
+        return results;
+    }
+
     provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
     ): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
-        const linePrefix = document.lineAt(position).text.substr(0, position.character);
+        const lineText = document.lineAt(position).text;
+        const linePrefix = lineText.substr(0, position.character);
 
-        return this.items.map(item => {
+        // Standard API completions
+        const completions: vscode.CompletionItem[] = this.items.map(item => {
             const ci = new vscode.CompletionItem(item.label, item.kind);
             ci.detail = item.detail;
             ci.documentation = new vscode.MarkdownString(item.doc);
@@ -439,6 +474,80 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
             }
             return ci;
         });
+
+        // Dynamic Project Asset Completions
+        const projectRoot = this.findProjectRoot(document.uri);
+        if (projectRoot) {
+            // 1. Sprites
+            const spritesDir = path.join(projectRoot, 'sprites');
+            const spriteFiles = this.scanDirectoryFiles(spritesDir, spritesDir);
+            for (const file of spriteFiles) {
+                if (file.endsWith('.png')) {
+                    const name = file.slice(0, -4);
+                    const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Color);
+                    ci.detail = `Sprite: sprites/${file}`;
+                    ci.documentation = new vscode.MarkdownString(`🖼️ **Sprite**: \`"${name}"\`\n\nŚcieżka: \`sprites/${file}\``);
+                    ci.insertText = `"${name}"`;
+                    ci.sortText = `0_sprite_${name}`;
+                    completions.push(ci);
+                }
+            }
+
+            // 2. Maps
+            const mapsDir = path.join(projectRoot, 'maps');
+            const mapFiles = this.scanDirectoryFiles(mapsDir, mapsDir);
+            for (const file of mapFiles) {
+                if (file.endsWith('.json')) {
+                    const name = file.slice(0, -5);
+                    const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.File);
+                    ci.detail = `Map: maps/${file}`;
+                    ci.documentation = new vscode.MarkdownString(`🗺️ **Map**: \`"${name}"\`\n\nŚcieżka: \`maps/${file}\``);
+                    ci.insertText = `"${name}"`;
+                    ci.sortText = `0_map_${name}`;
+                    completions.push(ci);
+                }
+            }
+
+            // 3. Sounds
+            const soundsDir = path.join(projectRoot, 'sounds');
+            const soundFiles = this.scanDirectoryFiles(soundsDir, soundsDir);
+            for (const file of soundFiles) {
+                const name = file.replace(/\.[^/.]+$/, '');
+                const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Value);
+                ci.detail = `Sound: sounds/${file}`;
+                ci.documentation = new vscode.MarkdownString(`🔊 **Sound**: \`"${name}"\`\n\nŚcieżka: \`sounds/${file}\``);
+                ci.insertText = `"${name}"`;
+                ci.sortText = `0_sound_${name}`;
+                completions.push(ci);
+            }
+
+            // 4. Music
+            const musicDir = path.join(projectRoot, 'music');
+            const musicFiles = this.scanDirectoryFiles(musicDir, musicDir);
+            for (const file of musicFiles) {
+                const name = file.replace(/\.[^/.]+$/, '');
+                const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Value);
+                ci.detail = `Music: music/${file}`;
+                ci.documentation = new vscode.MarkdownString(`🎵 **Music**: \`"${name}"\`\n\nŚcieżka: \`music/${file}\``);
+                ci.insertText = `"${name}"`;
+                ci.sortText = `0_music_${name}`;
+                completions.push(ci);
+            }
+
+            // 5. Assets
+            const assetsDir = path.join(projectRoot, 'assets');
+            const assetFiles = this.scanDirectoryFiles(assetsDir, assetsDir);
+            for (const file of assetFiles) {
+                const ci = new vscode.CompletionItem(`"${file}"`, vscode.CompletionItemKind.File);
+                ci.detail = `Asset: assets/${file}`;
+                ci.documentation = new vscode.MarkdownString(`📁 **Asset**: \`"${file}"\`\n\nŚcieżka: \`assets/${file}\``);
+                ci.insertText = `"${file}"`;
+                ci.sortText = `0_asset_${file}`;
+                completions.push(ci);
+            }
+        }
+
+        return completions;
     }
 
     provideHover(
@@ -446,6 +555,45 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
         position: vscode.Position,
         token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Hover> {
+        const line = document.lineAt(position).text;
+        
+        // Check for quoted strings first (potential asset references)
+        const stringRange = document.getWordRangeAtPosition(position, /["'][^"']+["']/);
+        if (stringRange) {
+            const raw = document.getText(stringRange);
+            const assetName = raw.slice(1, -1);
+            const projectRoot = this.findProjectRoot(document.uri);
+            if (projectRoot && assetName) {
+                // Check if sprite exists
+                const spritePath = path.join(projectRoot, 'sprites', `${assetName}.png`);
+                if (fs.existsSync(spritePath)) {
+                    const md = new vscode.MarkdownString(`🖼️ **microStudio Sprite**: \`${assetName}\`\n\n- Plik: [sprites/${assetName}.png](${vscode.Uri.file(spritePath)})\n- Format: PNG`);
+                    return new vscode.Hover(md, stringRange);
+                }
+
+                // Check if map exists
+                const mapPath = path.join(projectRoot, 'maps', `${assetName}.json`);
+                if (fs.existsSync(mapPath)) {
+                    const md = new vscode.MarkdownString(`🗺️ **microStudio Map**: \`${assetName}\`\n\n- Plik: [maps/${assetName}.json](${vscode.Uri.file(mapPath)})\n- Format: JSON Grid Map`);
+                    return new vscode.Hover(md, stringRange);
+                }
+
+                // Check if sound exists
+                const soundPath = path.join(projectRoot, 'sounds', `${assetName}.wav`);
+                if (fs.existsSync(soundPath) || fs.existsSync(path.join(projectRoot, 'sounds', `${assetName}.json`))) {
+                    const md = new vscode.MarkdownString(`🔊 **microStudio Sound**: \`${assetName}\``);
+                    return new vscode.Hover(md, stringRange);
+                }
+
+                // Check if music exists
+                const musicPath = path.join(projectRoot, 'music', `${assetName}.mp3`);
+                if (fs.existsSync(musicPath) || fs.existsSync(path.join(projectRoot, 'music', `${assetName}.json`))) {
+                    const md = new vscode.MarkdownString(`🎵 **microStudio Music**: \`${assetName}\``);
+                    return new vscode.Hover(md, stringRange);
+                }
+            }
+        }
+
         const range = document.getWordRangeAtPosition(position, /[\w\.]+/);
         if (!range) return null;
 

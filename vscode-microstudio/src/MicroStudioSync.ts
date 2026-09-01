@@ -4,6 +4,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { I18n } from './i18n';
 
+export interface SavedAccount {
+    username: string;
+    token?: string;
+    lastUsed: number;
+}
+
 export class MicroStudioSync {
     private socket: WebSocket | null = null;
     private token: string | null = null;
@@ -29,6 +35,36 @@ export class MicroStudioSync {
         return this.username;
     }
 
+    public getSavedAccounts(): SavedAccount[] {
+        return this.context.globalState.get<SavedAccount[]>('microstudio.savedAccounts', []);
+    }
+
+    private async saveAccount(username: string, token?: string, password?: string) {
+        let accounts = this.getSavedAccounts();
+        const existingIdx = accounts.findIndex(a => a.username.toLowerCase() === username.toLowerCase());
+        const entry: SavedAccount = {
+            username: username,
+            token: token,
+            lastUsed: Date.now()
+        };
+
+        if (existingIdx >= 0) {
+            accounts[existingIdx] = entry;
+        } else {
+            accounts.push(entry);
+        }
+
+        await this.context.globalState.update('microstudio.savedAccounts', accounts);
+        await this.context.globalState.update('microstudio.username', username);
+        if (token) {
+            await this.context.globalState.update('microstudio.token', token);
+        }
+        if (password) {
+            await this.context.secrets.store(`microstudio.pass.${username}`, password);
+            await this.context.secrets.store('microstudio.password', password);
+        }
+    }
+
     private setState(state: "connected" | "disconnected" | "connecting") {
         this.state = state;
         this.connectionStateEmitter.fire(state);
@@ -43,7 +79,8 @@ export class MicroStudioSync {
                 await this.connectWithToken(token, username, true);
             } catch (err) {
                 // If token fails, try password
-                const password = await this.context.secrets.get('microstudio.password');
+                const password = await this.context.secrets.get(`microstudio.pass.${username}`) || 
+                                 await this.context.secrets.get('microstudio.password');
                 if (password) {
                     try {
                         await this.connectWithCredentials(username, password, true);
@@ -77,13 +114,128 @@ export class MicroStudioSync {
             location: vscode.ProgressLocation.Notification,
             title: I18n.t('login_connecting'),
             cancellable: false
-        }, async (progress) => {
+        }, async () => {
             try {
                 await this.connectWithCredentials(username, password, false);
             } catch (err: any) {
                 vscode.window.showErrorMessage(I18n.t('login_failed', err.message));
             }
         });
+    }
+
+    public async manageAccounts(): Promise<void> {
+        const accounts = this.getSavedAccounts();
+        const items: (vscode.QuickPickItem & { action: string; username?: string })[] = [];
+
+        // List existing accounts
+        for (const acc of accounts) {
+            const isActive = (this.state === 'connected' && this.username?.toLowerCase() === acc.username.toLowerCase());
+            items.push({
+                label: `$(account) ${acc.username} ${isActive ? I18n.t('active_account_badge') : ''}`,
+                description: isActive ? 'Connected' : 'Click to switch',
+                action: 'switch',
+                username: acc.username
+            });
+        }
+
+        items.push({
+            label: `$(add) ${I18n.t('add_account_option')}`,
+            description: 'Log in to another account',
+            action: 'add'
+        });
+
+        if (accounts.length > 0) {
+            items.push({
+                label: `$(trash) ${I18n.t('remove_account_option')}`,
+                description: 'Remove a saved account from this device',
+                action: 'remove'
+            });
+        }
+
+        if (this.state === 'connected') {
+            items.push({
+                label: `$(sign-out) ${I18n.t('logged_out')}`,
+                description: 'Disconnect current session',
+                action: 'logout'
+            });
+        }
+
+        const picked = await vscode.window.showQuickPick(items, {
+            placeHolder: I18n.t('manage_accounts_title')
+        });
+
+        if (!picked) return;
+
+        if (picked.action === 'add') {
+            await this.connect();
+        } else if (picked.action === 'switch' && picked.username) {
+            if (this.username?.toLowerCase() === picked.username.toLowerCase() && this.state === 'connected') {
+                return; // Already active
+            }
+            await this.switchToAccount(picked.username);
+        } else if (picked.action === 'remove') {
+            await this.showRemoveAccountDialog();
+        } else if (picked.action === 'logout') {
+            await this.logout();
+        }
+    }
+
+    public async switchToAccount(username: string): Promise<void> {
+        const accounts = this.getSavedAccounts();
+        const target = accounts.find(a => a.username.toLowerCase() === username.toLowerCase());
+        if (!target) return;
+
+        this.disconnect();
+
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: I18n.t('login_connecting'),
+            cancellable: false
+        }, async () => {
+            try {
+                if (target.token) {
+                    try {
+                        await this.connectWithToken(target.token, target.username, false);
+                        return;
+                    } catch (e) {}
+                }
+                const password = await this.context.secrets.get(`microstudio.pass.${target.username}`);
+                if (password) {
+                    await this.connectWithCredentials(target.username, password, false);
+                } else {
+                    const passInput = await vscode.window.showInputBox({
+                        prompt: `${I18n.t('login_password_prompt')} (${target.username}):`,
+                        password: true
+                    });
+                    if (passInput) {
+                        await this.connectWithCredentials(target.username, passInput, false);
+                    }
+                }
+            } catch (err: any) {
+                vscode.window.showErrorMessage(I18n.t('login_failed', err.message));
+            }
+        });
+    }
+
+    private async showRemoveAccountDialog() {
+        const accounts = this.getSavedAccounts();
+        if (accounts.length === 0) return;
+
+        const picked = await vscode.window.showQuickPick(
+            accounts.map(a => ({ label: `$(account) ${a.username}`, username: a.username })),
+            { placeHolder: I18n.t('select_account_to_remove') }
+        );
+        if (!picked) return;
+
+        const remaining = accounts.filter(a => a.username.toLowerCase() !== picked.username.toLowerCase());
+        await this.context.globalState.update('microstudio.savedAccounts', remaining);
+        await this.context.secrets.delete(`microstudio.pass.${picked.username}`);
+
+        if (this.username?.toLowerCase() === picked.username.toLowerCase()) {
+            await this.logout();
+        }
+
+        vscode.window.showInformationMessage(I18n.t('account_removed_success', picked.username));
     }
 
     private connectWithCredentials(username: string, password?: string, silent = false): Promise<void> {
@@ -110,12 +262,8 @@ export class MicroStudioSync {
                         this.isConnecting = false;
                         this.setState("connected");
                         
-                        // Save credentials
-                        await this.context.globalState.update('microstudio.username', username);
-                        await this.context.globalState.update('microstudio.token', response.token);
-                        if (password) {
-                            await this.context.secrets.store('microstudio.password', password);
-                        }
+                        // Save credentials & multi-account entry
+                        await this.saveAccount(username, response.token, password);
                         
                         if (!silent) {
                             vscode.window.showInformationMessage(I18n.t('login_success', username));
@@ -151,6 +299,9 @@ export class MicroStudioSync {
                         this.username = username;
                         this.isConnecting = false;
                         this.setState("connected");
+                        
+                        await this.saveAccount(username, token);
+
                         if (!silent) {
                             vscode.window.showInformationMessage(I18n.t('login_success', username));
                         }
@@ -163,24 +314,24 @@ export class MicroStudioSync {
         });
     }
 
-    private setupSocketEvents(resolve: () => void, reject: (err: Error) => void) {
+    private setupSocketEvents(resolve: () => void, reject: (err: any) => void) {
         if (!this.socket) return;
 
         this.socket.on('message', (data: WebSocket.Data) => {
             try {
                 const msg = JSON.parse(data.toString());
-                if (msg.request_id !== undefined && this.pendingRequests[msg.request_id]) {
+                if (msg.request_id && this.pendingRequests[msg.request_id]) {
                     this.pendingRequests[msg.request_id](msg);
                     delete this.pendingRequests[msg.request_id];
                 } else {
                     this.handleServerMessage(msg);
                 }
-            } catch (e) {
-                console.error('Error parsing message', e);
+            } catch (err) {
+                console.error("Error parsing message from server", err);
             }
         });
 
-        this.socket.on('error', (err: Error) => {
+        this.socket.on('error', (err: any) => {
             this.isConnecting = false;
             this.disconnect();
             reject(err);
@@ -198,7 +349,6 @@ export class MicroStudioSync {
         this.username = null;
         await this.context.globalState.update('microstudio.username', undefined);
         await this.context.globalState.update('microstudio.token', undefined);
-        await this.context.secrets.delete('microstudio.password');
         vscode.window.showInformationMessage(I18n.t('logged_out'));
     }
 

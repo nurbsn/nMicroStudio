@@ -32,6 +32,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Create Resource...',
+        'type_sprite': 'Sprite',
+        'type_map': 'Map',
+        'type_script': 'Script / Code',
+        'type_sound': 'Sound',
+        'type_music': 'Music',
+        'import_asset_option': 'Import File to assets/',
+        'select_asset_type_prompt': 'Select resource type to create:',
         'new_sprite_prompt': 'Enter new Sprite name (e.g. player, enemies/boss):',
         'new_sprite_created': 'Created new Sprite: {0}',
         'sprite_already_exists': 'Sprite "{0}" already exists!',
@@ -49,6 +57,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': 'Imported {0} file(s) to assets/',
         'name_cannot_be_empty': 'Name cannot be empty',
         'project_not_found': 'No active microStudio project found (missing project.json).',
+
+        // Project Creation Wizard
+        'new_project': 'New Project...',
+        'new_project_title_prompt': 'Enter project title (e.g. My New Game):',
+        'new_project_slug_prompt': 'Enter project slug (folder & cloud identifier):',
+        'project_dir_already_exists': 'Directory "{0}" already exists!',
+        'select_project_language': 'Select programming language:',
+        'new_project_created_success': 'Project "{0}" created successfully. Do you want to open it?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'microStudio Accounts',
+        'add_account_option': 'Add New Account...',
+        'remove_account_option': 'Remove Saved Account...',
+        'select_account_to_remove': 'Select account to remove:',
+        'switch_account_success': 'Switched to account: {0}',
+        'account_removed_success': 'Removed account: {0}',
+        'active_account_badge': '(Active)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Set Projects Root Directory...',
@@ -124,6 +149,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Dodaj Zasób...',
+        'type_sprite': 'Sprite (Grafika)',
+        'type_map': 'Mapa Kafelkowa',
+        'type_script': 'Skrypt / Kod (.ms)',
+        'type_sound': 'Dźwięk',
+        'type_music': 'Muzyka',
+        'import_asset_option': 'Importuj plik do assets/',
+        'select_asset_type_prompt': 'Wybierz typ zasobu do utworzenia:',
         'new_sprite_prompt': 'Podaj nazwę nowego Sprite\'a (np. gracz, wrogowie/boss):',
         'new_sprite_created': 'Utworzono nowy Sprite: {0}',
         'sprite_already_exists': 'Sprite o nazwie "{0}" już istnieje!',
@@ -141,6 +174,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': 'Zaimportowano {0} plik(ów) do assets/',
         'name_cannot_be_empty': 'Nazwa nie może być pusta',
         'project_not_found': 'Nie znaleziono aktywnego projektu microStudio (brak pliku project.json).',
+
+        // Project Creation Wizard
+        'new_project': 'Nowy Projekt...',
+        'new_project_title_prompt': 'Wpisz tytuł projektu (np. Moja Gra):',
+        'new_project_slug_prompt': 'Wpisz identyfikator (slug - nazwa folderu i ID w chmurze):',
+        'project_dir_already_exists': 'Folder o nazwie "{0}" już istnieje!',
+        'select_project_language': 'Wybierz język programowania:',
+        'new_project_created_success': 'Projekt "{0}" został pomyślnie utworzony. Czy chcesz go otworzyć?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'Konta microStudio',
+        'add_account_option': 'Dodaj Nowe Konto...',
+        'remove_account_option': 'Usuń Zapisane Konto...',
+        'select_account_to_remove': 'Wybierz konto do usunięcia:',
+        'switch_account_success': 'Przełączono na konto: {0}',
+        'account_removed_success': 'Usunięto konto: {0}',
+        'active_account_badge': '(Aktywne)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Ustaw katalog główny projektów...',
@@ -216,6 +266,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Créer une Ressource...',
+        'type_sprite': 'Sprite (Graphisme)',
+        'type_map': 'Carte de Tuiles',
+        'type_script': 'Script / Code (.ms)',
+        'type_sound': 'Son',
+        'type_music': 'Musique',
+        'import_asset_option': 'Importer un fichier dans assets/',
+        'select_asset_type_prompt': 'Sélectionnez le type de ressource à créer :',
         'new_sprite_prompt': 'Nom du nouveau Sprite (ex. joueur, ennemis/boss) :',
         'new_sprite_created': 'Nouveau Sprite créé : {0}',
         'sprite_already_exists': 'Le Sprite "{0}" existe déjà !',
@@ -233,6 +291,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': '{0} fichier(s) importé(s) dans assets/',
         'name_cannot_be_empty': 'Le nom ne peut pas être vide',
         'project_not_found': 'Aucun projet microStudio actif trouvé (project.json manquant).',
+
+        // Project Creation Wizard
+        'new_project': 'Nouveau Projet...',
+        'new_project_title_prompt': 'Titre du projet (ex. Mon Jeu) :',
+        'new_project_slug_prompt': 'Identifiant (slug - nom du dossier et identifiant cloud) :',
+        'project_dir_already_exists': 'Le dossier "{0}" existe déjà !',
+        'select_project_language': 'Sélectionnez le langage de programmation :',
+        'new_project_created_success': 'Le projet "{0}" a été créé. Voulez-vous l\'ouvrir ?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'Comptes microStudio',
+        'add_account_option': 'Ajouter un nouveau compte...',
+        'remove_account_option': 'Supprimer un compte enregistré...',
+        'select_account_to_remove': 'Sélectionnez le compte à supprimer :',
+        'switch_account_success': 'Passé au compte : {0}',
+        'account_removed_success': 'Compte supprimé : {0}',
+        'active_account_badge': '(Actif)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Définir le dossier racine des projets...',
@@ -308,6 +383,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Ressource erstellen...',
+        'type_sprite': 'Sprite (Grafik)',
+        'type_map': 'Tilemap-Karte',
+        'type_script': 'Skript / Code (.ms)',
+        'type_sound': 'Sound',
+        'type_music': 'Musik',
+        'import_asset_option': 'Datei in assets/ importieren',
+        'select_asset_type_prompt': 'Ressourcentyp zum Erstellen auswählen:',
         'new_sprite_prompt': 'Name des neuen Sprites (z. B. Spieler, Gegner/Boss):',
         'new_sprite_created': 'Neues Sprite erstellt: {0}',
         'sprite_already_exists': 'Sprite "{0}" existiert bereits!',
@@ -325,6 +408,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': '{0} Datei(en) in assets/ importiert',
         'name_cannot_be_empty': 'Name darf nicht leer sein',
         'project_not_found': 'Kein aktives microStudio-Projekt gefunden (project.json fehlt).',
+
+        // Project Creation Wizard
+        'new_project': 'Neues Projekt...',
+        'new_project_title_prompt': 'Projekttitel eingeben (z. B. Mein Spiel):',
+        'new_project_slug_prompt': 'Projekt-Slug eingeben (Ordnername & Cloud-ID):',
+        'project_dir_already_exists': 'Verzeichnis "{0}" existiert bereits!',
+        'select_project_language': 'Programmiersprache auswählen:',
+        'new_project_created_success': 'Projekt "{0}" erfolgreich erstellt. Möchten Sie es öffnen?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'microStudio-Konten',
+        'add_account_option': 'Neues Konto hinzufügen...',
+        'remove_account_option': 'Gespeichertes Konto entfernen...',
+        'select_account_to_remove': 'Zu entfernendes Konto auswählen:',
+        'switch_account_success': 'Gewechselt zu Konto: {0}',
+        'account_removed_success': 'Konto entfernt: {0}',
+        'active_account_badge': '(Aktiv)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Projekt-Stammverzeichnis festlegen...',
@@ -400,6 +500,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Crear Recurso...',
+        'type_sprite': 'Sprite (Gráfico)',
+        'type_map': 'Mapa de Cuadrícula',
+        'type_script': 'Script / Código (.ms)',
+        'type_sound': 'Sonido',
+        'type_music': 'Música',
+        'import_asset_option': 'Importar archivo a assets/',
+        'select_asset_type_prompt': 'Selecciona el tipo de recurso a crear:',
         'new_sprite_prompt': 'Nombre del nuevo Sprite (ej. jugador, enemigos/jefe):',
         'new_sprite_created': 'Nuevo Sprite creado: {0}',
         'sprite_already_exists': '¡El Sprite "{0}" ya existe!',
@@ -417,6 +525,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': '{0} archivo(s) importado(s) a assets/',
         'name_cannot_be_empty': 'El nombre no puede estar vacío',
         'project_not_found': 'No se encontró ningún proyecto microStudio activo (falta project.json).',
+
+        // Project Creation Wizard
+        'new_project': 'Nuevo Proyecto...',
+        'new_project_title_prompt': 'Título del proyecto (ej. Mi Juego):',
+        'new_project_slug_prompt': 'Slug del proyecto (nombre de carpeta e ID en la nube):',
+        'project_dir_already_exists': '¡El directorio "{0}" ya existe!',
+        'select_project_language': 'Selecciona el lenguaje de programación:',
+        'new_project_created_success': 'Proyecto "{0}" creado con éxito. ¿Deseas abrirlo?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'Cuentas de microStudio',
+        'add_account_option': 'Añadir nueva cuenta...',
+        'remove_account_option': 'Eliminar cuenta guardada...',
+        'select_account_to_remove': 'Selecciona la cuenta a eliminar:',
+        'switch_account_success': 'Cambiado a la cuenta: {0}',
+        'account_removed_success': 'Cuenta eliminada: {0}',
+        'active_account_badge': '(Activa)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Establecer carpeta raíz de proyectos...',
@@ -492,6 +617,14 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'edit_json': 'JSON',
 
         // Resource Creator
+        'create_resource': 'Crea Risorsa...',
+        'type_sprite': 'Sprite (Grafica)',
+        'type_map': 'Mappa a Griglia',
+        'type_script': 'Script / Codice (.ms)',
+        'type_sound': 'Suono',
+        'type_music': 'Musica',
+        'import_asset_option': 'Importa file in assets/',
+        'select_asset_type_prompt': 'Seleziona il tipo di risorsa da creare:',
         'new_sprite_prompt': 'Nome del nuovo Sprite (es. giocatore, nemici/boss):',
         'new_sprite_created': 'Nuovo Sprite creato: {0}',
         'sprite_already_exists': 'Lo Sprite "{0}" esiste già!',
@@ -509,6 +642,23 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
         'imported_assets': '{0} file importato/i in assets/',
         'name_cannot_be_empty': 'Il nome non può essere vuoto',
         'project_not_found': 'Nessun progetto microStudio attivo trovato (project.json mancante).',
+
+        // Project Creation Wizard
+        'new_project': 'Nuovo Progetto...',
+        'new_project_title_prompt': 'Titolo del progetto (es. Il Mio Gioco):',
+        'new_project_slug_prompt': 'Slug del progetto (nome cartella e ID cloud):',
+        'project_dir_already_exists': 'La cartella "{0}" esiste già!',
+        'select_project_language': 'Seleziona il linguaggio di programmazione:',
+        'new_project_created_success': 'Progetto "{0}" creato con successo. Vuoi aprirlo?',
+
+        // Multi-Account Manager
+        'manage_accounts_title': 'Account microStudio',
+        'add_account_option': 'Aggiungi nuovo account...',
+        'remove_account_option': 'Rimuovi account salvato...',
+        'select_account_to_remove': 'Seleziona l\'account da rimuovere:',
+        'switch_account_success': 'Passato all\'account: {0}',
+        'account_removed_success': 'Account rimosso: {0}',
+        'active_account_badge': '(Attivo)',
 
         // Project Explorer & Sync
         'set_workspace_root': 'Imposta cartella radice dei progetti...',
@@ -594,4 +744,3 @@ export class I18n {
         return translations[loc] || translations['en'];
     }
 }
-

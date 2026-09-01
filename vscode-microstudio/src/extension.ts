@@ -250,7 +250,20 @@ export function activate(context: vscode.ExtensionContext) {
         });
     }));
 
-    // Register Resource Creation Commands
+    // Register Unified Resource Creation & Project Wizard Commands
+    context.subscriptions.push(vscode.commands.registerCommand('microstudio.createAsset', async (uri?: vscode.Uri) => {
+        await ResourceCreator.showCreateAssetQuickPick(uri);
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('microstudio.createNewProject', async () => {
+        await ResourceCreator.createNewProject();
+    }));
+
+    // Register Multi-Account Manager Command
+    context.subscriptions.push(vscode.commands.registerCommand('microstudio.manageAccounts', async () => {
+        await syncService.manageAccounts();
+    }));
+
+    // Register Individual Resource Creation Commands
     context.subscriptions.push(vscode.commands.registerCommand('microstudio.newSprite', async (uri?: vscode.Uri) => {
         await ResourceCreator.createNewSprite(uri);
     }));

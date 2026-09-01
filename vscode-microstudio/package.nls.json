@@ -2,6 +2,9 @@
   "view.projectSettings": "Project Settings",
   "view.localProjects": "Local Projects",
   "view.remoteProjects": "Remote Projects",
+  "command.createAsset": "Add Resource...",
+  "command.createNewProject": "New Project...",
+  "command.manageAccounts": "Manage Accounts...",
   "command.newSprite": "New Sprite...",
   "command.newMap": "New Map...",
   "command.newSource": "New Script...",
@@ -22,5 +25,5 @@
   "command.deleteLocalProject": "Delete",
   "config.workspaceRoot": "Root directory containing local microStudio projects.",
   "config.serverUrl": "microStudio WebSocket server URL (default: wss://microstudio.dev/).",
-  "config.language": "Language for the microStudio extension interface (auto, en, pl, fr, de, es, it)."
+  "config.language": "Language for the microStudio extension interface (auto, en, pl, fr, de, es, it). To contribute a new translation, add package.nls.<locale>.json and update src/i18n.ts on GitHub: https://github.com/nurbsn/nMicroStudio"
 }

@@ -152,6 +152,17 @@ export class RemoteProjectsProvider implements vscode.TreeDataProvider<RemotePro
         const state = this.syncService.getConnectionState();
 
         if (state === 'disconnected') {
+            const accounts = this.syncService.getSavedAccounts();
+            if (accounts.length > 0) {
+                const manageItem = new vscode.TreeItem(`${I18n.t('manage_accounts_title')} (${accounts.length})...`);
+                manageItem.command = {
+                    command: 'microstudio.manageAccounts',
+                    title: I18n.t('manage_accounts_title')
+                };
+                manageItem.iconPath = new vscode.ThemeIcon('account');
+                return [manageItem];
+            }
+
             const loginItem = new vscode.TreeItem(I18n.t('login_username_prompt') + '...');
             loginItem.command = {
                 command: 'microstudio.login',

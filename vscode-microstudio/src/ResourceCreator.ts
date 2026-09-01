@@ -225,4 +225,124 @@ export class ResourceCreator {
 
         vscode.window.showInformationMessage(I18n.t('imported_assets', count));
     }
+
+    public static async showCreateAssetQuickPick(targetUri?: vscode.Uri) {
+        const items = [
+            { label: '$(file-media) ' + I18n.t('type_sprite'), description: 'sprites/', action: 'sprite' },
+            { label: '$(map) ' + I18n.t('type_map'), description: 'maps/', action: 'map' },
+            { label: '$(file-code) ' + I18n.t('type_script'), description: 'ms/*.ms', action: 'script' },
+            { label: '$(unmute) ' + I18n.t('type_sound'), description: 'sounds/', action: 'sound' },
+            { label: '$(play-circle) ' + I18n.t('type_music'), description: 'music/', action: 'music' },
+            { label: '$(file-add) ' + I18n.t('import_asset_option'), description: 'assets/', action: 'import' }
+        ];
+
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: I18n.t('select_asset_type_prompt')
+        });
+
+        if (!selected) return;
+
+        switch (selected.action) {
+            case 'sprite': return this.createNewSprite(targetUri);
+            case 'map': return this.createNewMap(targetUri);
+            case 'script': return this.createNewSource(targetUri);
+            case 'sound': return this.createNewSound(targetUri);
+            case 'music': return this.createNewMusic(targetUri);
+            case 'import': return this.importAsset(targetUri);
+        }
+    }
+
+    public static async createNewProject(): Promise<void> {
+        const config = vscode.workspace.getConfiguration('microstudio');
+        let workspaceRoot = config.get<string>('workspaceRoot');
+
+        if (!workspaceRoot || !fs.existsSync(workspaceRoot)) {
+            const chosen = await vscode.window.showOpenDialog({
+                canSelectFiles: false,
+                canSelectFolders: true,
+                canSelectMany: false,
+                openLabel: I18n.t('set_workspace_root_dialog')
+            });
+            if (!chosen || chosen.length === 0) return;
+            workspaceRoot = chosen[0].fsPath;
+            await config.update('workspaceRoot', workspaceRoot, vscode.ConfigurationTarget.Global);
+        }
+
+        const title = await vscode.window.showInputBox({
+            prompt: I18n.t('new_project_title_prompt'),
+            placeHolder: 'My New Game',
+            validateInput: text => (!text || text.trim() === '' ? I18n.t('name_cannot_be_empty') : null)
+        });
+        if (!title) return;
+
+        const defaultSlug = title.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const slug = await vscode.window.showInputBox({
+            prompt: I18n.t('new_project_slug_prompt'),
+            value: defaultSlug || 'mygame',
+            validateInput: text => (!text || text.trim() === '' ? I18n.t('name_cannot_be_empty') : null)
+        });
+        if (!slug) return;
+
+        const projectDir = path.join(workspaceRoot, slug);
+        if (fs.existsSync(projectDir)) {
+            vscode.window.showErrorMessage(I18n.t('project_dir_already_exists', slug));
+            return;
+        }
+
+        const langItems = [
+            { label: 'MicroScript', value: 'microscript', description: 'Default microStudio language' },
+            { label: 'JavaScript', value: 'javascript', description: 'Standard JS' },
+            { label: 'Python', value: 'python', description: 'Python syntax' },
+            { label: 'Lua', value: 'lua', description: 'Lua syntax' }
+        ];
+
+        const selectedLang = await vscode.window.showQuickPick(langItems, {
+            placeHolder: I18n.t('select_project_language')
+        });
+        const language = selectedLang ? selectedLang.value : 'microscript';
+
+        // Create structure
+        fs.mkdirSync(projectDir, { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'ms'), { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'sprites'), { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'maps'), { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'sounds'), { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'music'), { recursive: true });
+        fs.mkdirSync(path.join(projectDir, 'assets'), { recursive: true });
+
+        const projectJson = {
+            title: title.trim(),
+            slug: slug.trim(),
+            version: "1.0.0",
+            language: language,
+            graphics: "Standard",
+            type: "game",
+            orientation: "any",
+            aspect: "free",
+            libs: []
+        };
+        fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify(projectJson, null, 2), 'utf8');
+
+        let starterCode = `// ${title}\n\ninit = function()\nend\n\nupdate = function()\nend\n\ndraw = function()\n  screen.clear()\n  screen.drawText("${title}", 0, 0, 20, "#00e5ff")\nend\n`;
+        if (language === 'javascript') {
+            starterCode = `// ${title}\n\nfunction init() {\n}\n\nfunction update() {\n}\n\nfunction draw() {\n  screen.clear();\n  screen.drawText("${title}", 0, 0, 20, "#00e5ff");\n}\n`;
+        } else if (language === 'python') {
+            starterCode = `# ${title}\n\ndef init():\n    pass\n\ndef update():\n    pass\n\ndef draw():\n    screen.clear()\n    screen.drawText("${title}", 0, 0, 20, "#00e5ff")\n`;
+        }
+
+        fs.writeFileSync(path.join(projectDir, 'ms', 'main.ms'), starterCode, 'utf8');
+
+        vscode.commands.executeCommand('microstudio.refreshProjects');
+        const openAction = await vscode.window.showInformationMessage(
+            I18n.t('new_project_created_success', title),
+            I18n.t('open_project_current_window'),
+            I18n.t('open_project_new_window')
+        );
+
+        if (openAction === I18n.t('open_project_current_window')) {
+            vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(projectDir), false);
+        } else if (openAction === I18n.t('open_project_new_window')) {
+            vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(projectDir), true);
+        }
+    }
 }
