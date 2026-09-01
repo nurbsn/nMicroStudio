@@ -96,7 +96,24 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
-        panel.webview.html = await HtmlBundler.bundle(projectRootPath, context.extensionPath, true, panel.webview);
+        const currentProjectPath = projectRootPath;
+        const updatePreviewHtml = async () => {
+            if (panel.visible && currentProjectPath) {
+                try {
+                    panel.webview.html = await HtmlBundler.bundle(currentProjectPath, context.extensionPath, true, panel.webview);
+                } catch (e) {
+                    console.error('Error bundling preview HTML', e);
+                }
+            }
+        };
+
+        panel.webview.onDidReceiveMessage(async (message) => {
+            if (message && message.command === 'reload') {
+                await updatePreviewHtml();
+            }
+        });
+
+        await updatePreviewHtml();
     }));
 
     // Register Sync command and Project Explorer panel

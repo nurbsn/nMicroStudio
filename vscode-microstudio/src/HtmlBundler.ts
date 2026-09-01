@@ -291,6 +291,8 @@ ${playJsContent}
             console.error("Player initialization error: " + err);
         }
 
+        const vscodeApi = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+
         // UI Controls
         document.getElementById('btn-play').addEventListener('click', () => {
             window.postMessage(JSON.stringify({ name: "resume" }), "*");
@@ -299,7 +301,11 @@ ${playJsContent}
             window.postMessage(JSON.stringify({ name: "pause" }), "*");
         });
         document.getElementById('btn-reload').addEventListener('click', () => {
-            location.reload();
+            if (vscodeApi) {
+                vscodeApi.postMessage({ command: 'reload' });
+            } else {
+                location.reload();
+            }
         });
         document.getElementById('btn-clear').addEventListener('click', () => {
             consoleOutput.innerHTML = '';
