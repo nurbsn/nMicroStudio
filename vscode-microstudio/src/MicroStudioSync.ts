@@ -94,8 +94,13 @@ export class MicroStudioSync {
 
     public async connect() {
         if (this.state === 'connected') {
-            vscode.window.showInformationMessage(I18n.t('already_connected'));
-            return;
+            const reLogin = await vscode.window.showInformationMessage(
+                `${I18n.t('already_connected')} (${this.username}). ${I18n.t('add_account_option')}`,
+                I18n.t('yes'),
+                'Cancel'
+            );
+            if (reLogin !== I18n.t('yes')) return;
+            this.disconnect();
         }
 
         const username = await vscode.window.showInputBox({ 
@@ -113,12 +118,17 @@ export class MicroStudioSync {
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: I18n.t('login_connecting'),
-            cancellable: false
-        }, async () => {
+            cancellable: true
+        }, async (progress, cancellationToken) => {
+            cancellationToken.onCancellationRequested(() => {
+                this.disconnect();
+            });
+
             try {
                 await this.connectWithCredentials(username, password, false);
             } catch (err: any) {
-                vscode.window.showErrorMessage(I18n.t('login_failed', err.message));
+                this.disconnect();
+                vscode.window.showErrorMessage(I18n.t('login_failed', err.message || err));
             }
         });
     }
@@ -190,8 +200,12 @@ export class MicroStudioSync {
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: I18n.t('login_connecting'),
-            cancellable: false
-        }, async () => {
+            cancellable: true
+        }, async (progress, cancellationToken) => {
+            cancellationToken.onCancellationRequested(() => {
+                this.disconnect();
+            });
+
             try {
                 if (target.token) {
                     try {
@@ -212,7 +226,8 @@ export class MicroStudioSync {
                     }
                 }
             } catch (err: any) {
-                vscode.window.showErrorMessage(I18n.t('login_failed', err.message));
+                this.disconnect();
+                vscode.window.showErrorMessage(I18n.t('login_failed', err.message || err));
             }
         });
     }
@@ -239,88 +254,116 @@ export class MicroStudioSync {
     }
 
     private connectWithCredentials(username: string, password?: string, silent = false): Promise<void> {
-        if (this.isConnecting) return Promise.resolve();
+        this.disconnect();
         this.isConnecting = true;
         this.setState("connecting");
 
         return new Promise<void>((resolve, reject) => {
-            this.socket = new WebSocket('wss://microstudio.dev/');
+            const timeout = setTimeout(() => {
+                this.disconnect();
+                reject(new Error('Connection timeout. microStudio server did not respond in 15 seconds.'));
+            }, 15000);
 
-            this.socket.on('open', () => {
-                this.sendRequest({
-                    name: 'login',
-                    nick: username,
-                    password: password
-                }, async (response: any) => {
-                    if (response.name === 'error') {
-                        this.isConnecting = false;
-                        this.disconnect();
-                        reject(new Error(response.error));
-                    } else if (response.name === 'logged_in') {
-                        this.token = response.token;
-                        this.username = username;
-                        this.isConnecting = false;
-                        this.setState("connected");
-                        
-                        // Save credentials & multi-account entry
-                        await this.saveAccount(username, response.token, password);
-                        
-                        if (!silent) {
-                            vscode.window.showInformationMessage(I18n.t('login_success', username));
+            try {
+                this.socket = new WebSocket('wss://microstudio.dev/');
+
+                this.socket.on('open', () => {
+                    this.sendRequest({
+                        name: 'login',
+                        nick: username,
+                        password: password
+                    }, async (response: any) => {
+                        clearTimeout(timeout);
+                        if (response.name === 'error') {
+                            this.disconnect();
+                            reject(new Error(response.error || 'Invalid credentials'));
+                        } else if (response.name === 'logged_in') {
+                            this.token = response.token;
+                            this.username = username;
+                            this.isConnecting = false;
+                            this.setState("connected");
+                            
+                            // Save credentials & multi-account entry
+                            await this.saveAccount(username, response.token, password);
+                            
+                            if (!silent) {
+                                vscode.window.showInformationMessage(I18n.t('login_success', username));
+                            }
+                            resolve();
+                        } else {
+                            this.disconnect();
+                            reject(new Error('Unexpected server response'));
                         }
-                        resolve();
-                    }
+                    });
                 });
-            });
 
-            this.setupSocketEvents(resolve, reject);
+                this.setupSocketEvents(resolve, reject, timeout);
+            } catch (err) {
+                clearTimeout(timeout);
+                this.disconnect();
+                reject(err);
+            }
         });
     }
 
     private connectWithToken(token: string, username: string, silent = true): Promise<void> {
-        if (this.isConnecting) return Promise.resolve();
+        this.disconnect();
         this.isConnecting = true;
         this.setState("connecting");
 
         return new Promise<void>((resolve, reject) => {
-            this.socket = new WebSocket('wss://microstudio.dev/');
+            const timeout = setTimeout(() => {
+                this.disconnect();
+                reject(new Error('Connection timeout. microStudio server did not respond in 15 seconds.'));
+            }, 15000);
 
-            this.socket.on('open', () => {
-                this.sendRequest({
-                    name: 'token',
-                    token: token
-                }, async (response: any) => {
-                    if (response.name === 'error') {
-                        this.isConnecting = false;
-                        this.disconnect();
-                        reject(new Error(response.error));
-                    } else if (response.name === 'token_valid') {
-                        this.token = token;
-                        this.username = username;
-                        this.isConnecting = false;
-                        this.setState("connected");
-                        
-                        await this.saveAccount(username, token);
+            try {
+                this.socket = new WebSocket('wss://microstudio.dev/');
 
-                        if (!silent) {
-                            vscode.window.showInformationMessage(I18n.t('login_success', username));
+                this.socket.on('open', () => {
+                    this.sendRequest({
+                        name: 'token',
+                        token: token
+                    }, async (response: any) => {
+                        clearTimeout(timeout);
+                        if (response.name === 'error') {
+                            this.disconnect();
+                            reject(new Error(response.error || 'Token expired or invalid'));
+                        } else if (response.name === 'token_valid') {
+                            this.token = token;
+                            this.username = username;
+                            this.isConnecting = false;
+                            this.setState("connected");
+                            
+                            await this.saveAccount(username, token);
+
+                            if (!silent) {
+                                vscode.window.showInformationMessage(I18n.t('login_success', username));
+                            }
+                            resolve();
+                        } else {
+                            this.disconnect();
+                            reject(new Error('Unexpected server response'));
                         }
-                        resolve();
-                    }
+                    });
                 });
-            });
 
-            this.setupSocketEvents(resolve, reject);
+                this.setupSocketEvents(resolve, reject, timeout);
+            } catch (err) {
+                clearTimeout(timeout);
+                this.disconnect();
+                reject(err);
+            }
         });
     }
 
-    private setupSocketEvents(resolve: () => void, reject: (err: any) => void) {
+    private setupSocketEvents(resolve: () => void, reject: (err: any) => void, timeout?: NodeJS.Timeout) {
         if (!this.socket) return;
 
         this.socket.on('message', (data: WebSocket.Data) => {
             try {
                 const msg = JSON.parse(data.toString());
-                if (msg.request_id && this.pendingRequests[msg.request_id]) {
+                if (msg.request_id !== undefined && this.pendingRequests[msg.request_id]) {
                     this.pendingRequests[msg.request_id](msg);
                     delete this.pendingRequests[msg.request_id];
                 } else {
@@ -332,14 +375,15 @@ export class MicroStudioSync {
         });
 
         this.socket.on('error', (err: any) => {
-            this.isConnecting = false;
+            if (timeout) clearTimeout(timeout);
             this.disconnect();
             reject(err);
         });
 
         this.socket.on('close', () => {
+            if (timeout) clearTimeout(timeout);
             this.isConnecting = false;
-            this.disconnect();
+            this.setState("disconnected");
         });
     }
 
@@ -353,8 +397,12 @@ export class MicroStudioSync {
     }
 
     public disconnect() {
+        this.isConnecting = false;
+        this.pendingRequests = {};
         if (this.socket) {
-            this.socket.close();
+            try {
+                this.socket.close();
+            } catch (e) {}
             this.socket = null;
         }
         this.setState("disconnected");
