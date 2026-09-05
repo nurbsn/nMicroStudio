@@ -39,10 +39,9 @@ this.LoadSprite = function(url, properties, loaded) {
   sprite = new Sprite(0, 0);
   sprite.ready = 0;
   img = new Image;
-  if (location.protocol !== "file:") {
+  if (!url.startsWith("data:") && location.protocol !== "file:") {
     img.crossOrigin = "Anonymous";
   }
-  img.src = url;
   img.onload = () => {
     var frame, i, j, numframes, ref;
     sprite.ready = true;
@@ -69,9 +68,14 @@ this.LoadSprite = function(url, properties, loaded) {
       return loaded();
     }
   };
-  img.onerror = () => {
-    return sprite.ready = 1;
+  img.onerror = (e) => {
+    console.warn("Failed to load sprite: " + url, e);
+    sprite.ready = 1;
+    if (loaded != null) {
+      return loaded();
+    }
   };
+  img.src = url;
   return sprite;
 };
 

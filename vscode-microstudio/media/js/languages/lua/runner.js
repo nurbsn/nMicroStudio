@@ -1,9 +1,9 @@
-this.Runner = (function() {
-  function Runner(microvm) {
+var LuaRunner = (function() {
+  function LuaRunner(microvm) {
     this.microvm = microvm;
   }
 
-  Runner.prototype.init = function() {
+  LuaRunner.prototype.init = function() {
     var kd, key, src;
     this.initialized = true;
     window.ctx = this.microvm.context.global;
@@ -22,7 +22,7 @@ this.Runner = (function() {
     return this.run(src);
   };
 
-  Runner.prototype.run = function(program, name) {
+  LuaRunner.prototype.run = function(program, name) {
     var err, line, res;
     if (name == null) {
       name = "";
@@ -51,7 +51,7 @@ this.Runner = (function() {
     return res;
   };
 
-  Runner.prototype.call = function(name, args) {
+  LuaRunner.prototype.call = function(name, args) {
     var err, file, line, res;
     try {
       res = fengari.load("if " + name + " then " + name + "() end")();
@@ -76,7 +76,7 @@ this.Runner = (function() {
     }
   };
 
-  Runner.prototype.toString = function(obj) {
+  LuaRunner.prototype.toString = function(obj) {
     if (obj != null) {
       return obj.toString();
     } else {
@@ -84,6 +84,11 @@ this.Runner = (function() {
     }
   };
 
-  return Runner;
+  return LuaRunner;
 
 })();
+
+this.LuaRunner = LuaRunner;
+if (typeof window !== "undefined") {
+  window.LuaRunner = LuaRunner;
+}

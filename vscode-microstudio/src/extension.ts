@@ -98,11 +98,14 @@ export function activate(context: vscode.ExtensionContext) {
 
         const currentProjectPath = projectRootPath;
         const updatePreviewHtml = async () => {
-            if (panel.visible && currentProjectPath) {
+            if (currentProjectPath) {
                 try {
-                    panel.webview.html = await HtmlBundler.bundle(currentProjectPath, context.extensionPath, true, panel.webview);
-                } catch (e) {
+                    await vscode.workspace.saveAll(false);
+                    const html = await HtmlBundler.bundle(currentProjectPath, context.extensionPath, true, panel.webview);
+                    panel.webview.html = `${html}\n<!-- reload:${Date.now()} -->`;
+                } catch (e: any) {
                     console.error('Error bundling preview HTML', e);
+                    vscode.window.showErrorMessage(`Błąd podczas odświeżania podglądu: ${e?.message || e}`);
                 }
             }
         };
@@ -111,6 +114,25 @@ export function activate(context: vscode.ExtensionContext) {
             if (message && message.command === 'reload') {
                 await updatePreviewHtml();
             }
+        });
+
+        let debounceTimer: NodeJS.Timeout | undefined;
+        const docSaveListener = vscode.workspace.onDidSaveTextDocument((doc) => {
+            if (currentProjectPath && doc.uri.fsPath.startsWith(currentProjectPath) && !doc.uri.fsPath.includes('.git')) {
+                if (debounceTimer) {
+                    clearTimeout(debounceTimer);
+                }
+                debounceTimer = setTimeout(() => {
+                    updatePreviewHtml();
+                }, 150);
+            }
+        });
+
+        panel.onDidDispose(() => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+            }
+            docSaveListener.dispose();
         });
 
         await updatePreviewHtml();
@@ -316,26 +338,40 @@ export function activate(context: vscode.ExtensionContext) {
         }
         if (!projectPath) return;
 
-        const defaultExportUri = vscode.Uri.file(path.join(projectPath, 'export', 'index.html'));
-        const saveUri = await vscode.window.showSaveDialog({
-            defaultUri: defaultExportUri,
-            filters: { 'HTML Game': ['html'] },
-            saveLabel: I18n.t('export_html_title')
+        const defaultExportDir = path.join(projectPath, 'export');
+        if (!fs.existsSync(defaultExportDir)) {
+            try {
+                fs.mkdirSync(defaultExportDir, { recursive: true });
+            } catch (e) {}
+        }
+
+        const selectedFolders = await vscode.window.showOpenDialog({
+            canSelectFiles: false,
+            canSelectFolders: true,
+            canSelectMany: false,
+            defaultUri: vscode.Uri.file(defaultExportDir),
+            openLabel: I18n.t('export_html_select_folder'),
+            title: I18n.t('export_html_title')
         });
-        if (!saveUri) return;
+        if (!selectedFolders || selectedFolders.length === 0) return;
+
+        const exportDir = selectedFolders[0].fsPath;
 
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: I18n.t('export_html_title'),
             cancellable: false
         }, async () => {
-            await HtmlBundler.exportStandalone(projectPath!, saveUri.fsPath, context.extensionPath);
+            const indexPath = await HtmlBundler.exportPackage(projectPath!, exportDir, context.extensionPath);
             const action = await vscode.window.showInformationMessage(
-                I18n.t('export_html_success', saveUri.fsPath),
+                I18n.t('export_html_success', exportDir),
+                I18n.t('open_folder'),
                 I18n.t('open_in_browser')
             );
-            if (action === I18n.t('open_in_browser')) {
-                vscode.env.openExternal(saveUri);
+            if (action === I18n.t('open_folder')) {
+                vscode.env.openExternal(vscode.Uri.file(exportDir));
+            } else if (action === I18n.t('open_in_browser')) {
+                vscode.env.openExternal(vscode.Uri.file(indexPath));
             }
         });
     }));

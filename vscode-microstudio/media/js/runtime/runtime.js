@@ -20,8 +20,8 @@ this.Runtime = class Runtime {
     this.mouse = this.screen.mouse;
     this.previous_init = null;
     this.random = new Random(0);
-    this.orientation = window.orientation;
-    this.aspect = window.aspect;
+    this.orientation = (this.resources && this.resources.orientation) || (window.resources && window.resources.orientation) || "landscape";
+    this.aspect = (this.resources && this.resources.aspect) || (window.resources && window.resources.aspect) || "16:9";
     this.report_errors = true;
     this.log = (text) => {
       return this.listener.log(text);
@@ -94,7 +94,8 @@ this.Runtime = class Runtime {
     ref = this.resources.images;
     for (j = 0, len1 = ref.length; j < len1; j++) {
       i = ref[j];
-      s = LoadSprite(this.url + "sprites/" + i.file + "?v=" + i.version, i.properties, () => {
+      const spriteUrl = i.url || (this.url + "sprites/" + i.file + "?v=" + i.version);
+      s = LoadSprite(spriteUrl, i.properties, () => {
         this.updateMaps();
         return this.checkStartReady();
       });
@@ -107,9 +108,10 @@ this.Runtime = class Runtime {
       for (k = 0, len2 = ref1.length; k < len2; k++) {
         m = ref1[k];
         name = m.file.split(".")[0].replace(/-/g, "/");
-        this.maps[name] = LoadMap(this.url + `maps/${m.file}?v=${m.version}`, () => {
+        const mapUrl = m.url || (this.url + `maps/${m.file}?v=${m.version}`);
+        this.maps[name] = LoadMap(mapUrl, () => {
           return this.checkStartReady();
-        });
+        }, m.data);
         this.maps[name].name = name;
       }
     } else if (this.resources.maps != null) {
@@ -126,7 +128,8 @@ this.Runtime = class Runtime {
     for (l = 0, len3 = ref3.length; l < len3; l++) {
       s = ref3[l];
       name = s.file.split(".")[0];
-      s = new Sound(this.audio, this.url + "sounds/" + s.file + "?v=" + s.version);
+      const soundUrl = s.url || (this.url + "sounds/" + s.file + "?v=" + s.version);
+      s = new Sound(this.audio, soundUrl);
       s.name = name;
       this.sounds[name] = s;
     }
@@ -134,7 +137,8 @@ this.Runtime = class Runtime {
     for (n = 0, len4 = ref4.length; n < len4; n++) {
       m = ref4[n];
       name = m.file.split(".")[0];
-      m = new Music(this.audio, this.url + "music/" + m.file + "?v=" + m.version);
+      const musicUrl = m.url || (this.url + "music/" + m.file + "?v=" + m.version);
+      m = new Music(this.audio, musicUrl);
       m.name = name;
       this.music[name] = m;
     }
@@ -146,6 +150,7 @@ this.Runtime = class Runtime {
       a.name = name;
       this.assets[name] = a;
     }
+    this.checkStartReady();
   }
 
   checkStartReady() {
@@ -478,6 +483,9 @@ this.Runtime = class Runtime {
   }
 
   resume() {
+    if (!this.started || !this.vm) {
+      return;
+    }
     if (this.stopped) {
       this.stopped = false;
       return requestAnimationFrame(() => {
@@ -488,7 +496,7 @@ this.Runtime = class Runtime {
 
   timer() {
     var ds, dt, fps, i, j, ref, sync_update, time, update_rate;
-    if (this.stopped) {
+    if (this.stopped || !this.vm) {
       return;
     }
     requestAnimationFrame(() => {

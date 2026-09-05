@@ -40,8 +40,10 @@ this.Screen = (function() {
   };
 
   Screen.prototype.updateInterface = function() {
-    this["interface"].width = this.width;
-    return this["interface"].height = this.height;
+    if (this["interface"] != null) {
+      this["interface"].width = this.width;
+      return this["interface"].height = this.height;
+    }
   };
 
   Screen.prototype.initDraw = function() {};
@@ -50,22 +52,42 @@ this.Screen = (function() {
 
   Screen.prototype.resize = function() {
     var ch, cw, h, min, r, ratio, w;
-    cw = window.innerWidth;
-    ch = window.innerHeight;
+    var parent = this.canvas.parentElement || document.getElementById("canvaswrapper");
+    cw = (parent && parent.clientWidth > 0) ? parent.clientWidth : window.innerWidth;
+    ch = (parent && parent.clientHeight > 0) ? parent.clientHeight : window.innerHeight;
+
+    var aspect = (this.runtime.aspect || (window.resources && window.resources.aspect) || "16:9").toString().trim();
+    min = aspect.startsWith(">");
+    if (min) {
+      aspect = aspect.substring(1);
+    }
     ratio = {
       "4x3": 4 / 3,
       "16x9": 16 / 9,
       "2x1": 2 / 1,
       "1x1": 1 / 1,
-      ">4x3": 4 / 3,
-      ">16x9": 16 / 9,
-      ">2x1": 2 / 1,
-      ">1x1": 1 / 1
-    }[this.runtime.aspect];
-    min = this.runtime.aspect.startsWith(">");
+      "16x10": 16 / 10,
+      "4:3": 4 / 3,
+      "16:9": 16 / 9,
+      "2:1": 2 / 1,
+      "1:1": 1 / 1,
+      "16:10": 16 / 10
+    }[aspect];
+    if (ratio == null && aspect !== "free") {
+      var match = aspect.match(/^(\d+(?:\.\d+)?)[x:](\d+(?:\.\d+)?)$/);
+      if (match) {
+        ratio = parseFloat(match[1]) / parseFloat(match[2]);
+      }
+    }
+
+    var orientation = this.runtime.orientation || (window.resources && window.resources.orientation) || "landscape";
+    if (orientation === "any") {
+      orientation = cw > ch ? "landscape" : "portrait";
+    }
+
     if (ratio != null) {
       if (min) {
-        switch (this.runtime.orientation) {
+        switch (orientation) {
           case "portrait":
             ratio = Math.max(ratio, ch / cw);
             break;
@@ -80,7 +102,7 @@ this.Screen = (function() {
             }
         }
       }
-      switch (this.runtime.orientation) {
+      switch (orientation) {
         case "portrait":
           r = Math.min(cw, ch / ratio) / cw;
           w = cw * r;
@@ -106,14 +128,19 @@ this.Screen = (function() {
       w = cw;
       h = ch;
     }
-    this.canvas.style["margin-top"] = Math.round((ch - h) / 2) + "px";
     this.canvas.style.width = Math.round(w) + "px";
     this.canvas.style.height = Math.round(h) + "px";
+    if (parent && window.getComputedStyle(parent).display === "flex") {
+      this.canvas.style["margin-top"] = "0px";
+    } else {
+      this.canvas.style["margin-top"] = Math.max(0, Math.round((ch - h) / 2)) + "px";
+    }
     this.camera_aspect = w / h;
     this.update_camera = true;
     this.renderer.resize(w, h);
     this.width = w;
-    return this.height = h;
+    this.height = h;
+    return this.updateInterface();
   };
 
   Screen.prototype.render = function(scene, camera) {

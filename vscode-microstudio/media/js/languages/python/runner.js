@@ -1,4 +1,4 @@
-this.Runner = class Runner {
+class PythonRunner {
   constructor(microvm) {
     this.microvm = microvm;
   }
@@ -94,3 +94,8 @@ this.Runner = class Runner {
   }
 
 };
+
+this.PythonRunner = PythonRunner;
+if (typeof window !== "undefined") {
+  window.PythonRunner = PythonRunner;
+}

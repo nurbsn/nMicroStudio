@@ -1,4 +1,4 @@
-this.Runner = class Runner {
+class MicroScriptRunner {
   constructor(microvm) {
     this.microvm = microvm;
   }
@@ -383,3 +383,8 @@ this.Thread = class Thread {
   }
 
 };
+
+this.MicroScriptRunner = this.Runner = MicroScriptRunner;
+if (typeof window !== "undefined") {
+  window.MicroScriptRunner = MicroScriptRunner;
+}

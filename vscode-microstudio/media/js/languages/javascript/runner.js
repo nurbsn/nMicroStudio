@@ -1,4 +1,4 @@
-this.Runner = class Runner {
+class JavaScriptRunner {
   constructor(microvm) {
     this.microvm = microvm;
   }
@@ -100,3 +100,8 @@ this.Runner = class Runner {
   }
 
 };
+
+this.JavaScriptRunner = JavaScriptRunner;
+if (typeof window !== "undefined") {
+  window.JavaScriptRunner = JavaScriptRunner;
+}

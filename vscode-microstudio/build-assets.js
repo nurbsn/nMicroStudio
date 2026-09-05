@@ -10,7 +10,43 @@ const webapp_css = [
 ];
 
 const player_js = [
-    '/js/util/canvas2d.js', "/js/languages/microscript/random.js", "/js/runtime/mpserverconnection.js", "/js/runtime/microvm.js", '/js/runtime/runtime.js', '/js/runtime/watcher.js', '/js/runtime/projectinterface.js', '/js/runtime/timemachine.js', '/js/runtime/screen.js', '/js/runtime/assetmanager.js', '/js/runtime/keyboard.js', '/js/runtime/gamepad.js', '/js/runtime/sprite.js', '/js/runtime/msimage.js', '/js/runtime/map.js', "/js/runtime/audio/audio.js", "/js/runtime/audio/beeper.js", "/js/runtime/audio/sound.js", "/js/runtime/audio/music.js", '/js/play/player.js', '/js/play/playerclient.js'
+    '/js/util/canvas2d.js', 
+    "/js/languages/microscript/random.js", 
+    "/js/languages/microscript/v2/tokenizer.js",
+    "/js/languages/microscript/v2/token.js",
+    "/js/languages/microscript/v2/parser.js",
+    "/js/languages/microscript/v2/program.js",
+    "/js/languages/microscript/v2/routine.js",
+    "/js/languages/microscript/v2/processor.js",
+    "/js/languages/microscript/v2/compiler.js",
+    "/js/languages/microscript/v2/transpiler.js",
+    "/js/languages/microscript/v2/runner.js",
+    "/js/languages/microscript/microscript.js",
+    "/js/languages/javascript/javascript.js",
+    "/js/languages/javascript/runner.js",
+    "/js/languages/python/python.js",
+    "/js/languages/python/runner.js",
+    "/js/languages/lua/lua.js",
+    "/js/languages/lua/runner.js",
+    "/js/runtime/mpserverconnection.js", 
+    "/js/runtime/microvm.js", 
+    '/js/runtime/runtime.js', 
+    '/js/runtime/watcher.js', 
+    '/js/runtime/projectinterface.js', 
+    '/js/runtime/timemachine.js', 
+    '/js/runtime/screen.js', 
+    '/js/runtime/assetmanager.js', 
+    '/js/runtime/keyboard.js', 
+    '/js/runtime/gamepad.js', 
+    '/js/runtime/sprite.js', 
+    '/js/runtime/msimage.js', 
+    '/js/runtime/map.js', 
+    "/js/runtime/audio/audio.js", 
+    "/js/runtime/audio/beeper.js", 
+    "/js/runtime/audio/sound.js", 
+    "/js/runtime/audio/music.js", 
+    '/js/play/player.js', 
+    '/js/play/playerclient.js'
 ];
 
 function concatFiles(list, output) {

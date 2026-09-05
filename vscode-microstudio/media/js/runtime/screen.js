@@ -242,8 +242,10 @@ this.Screen = class Screen {
   }
 
   updateInterface() {
-    this.interface.width = this.width;
-    return this.interface.height = this.height;
+    if (this.interface != null) {
+      this.interface.width = this.width;
+      return this.interface.height = this.height;
+    }
   }
 
   clear(color) {
@@ -894,24 +896,42 @@ this.Screen = class Screen {
   //@context.drawImage map.getCanvas(),x-w/2-@anchor_x*w/2,-y-h/2+@anchor_y*h/2,w,h
   resize() {
     var backingStoreRatio, ch, cw, devicePixelRatio, h, min, r, ratio, w;
-    cw = window.innerWidth;
-    ch = window.innerHeight;
+    var parent = this.canvas.parentElement || document.getElementById("canvaswrapper");
+    cw = (parent && parent.clientWidth > 0) ? parent.clientWidth : window.innerWidth;
+    ch = (parent && parent.clientHeight > 0) ? parent.clientHeight : window.innerHeight;
+
+    var aspect = (this.runtime.aspect || (window.resources && window.resources.aspect) || "16:9").toString().trim();
+    min = aspect.startsWith(">");
+    if (min) {
+      aspect = aspect.substring(1);
+    }
     ratio = {
       "4x3": 4 / 3,
       "16x9": 16 / 9,
       "2x1": 2 / 1,
       "1x1": 1 / 1,
-      ">4x3": 4 / 3,
-      ">16x9": 16 / 9,
-      ">2x1": 2 / 1,
-      ">1x1": 1 / 1
-    }[this.runtime.aspect];
-    min = this.runtime.aspect.startsWith(">");
-    //if not ratio? and @runtime.orientation in ["portrait","landscape"]
-    //  ratio = 16/9
+      "16x10": 16 / 10,
+      "4:3": 4 / 3,
+      "16:9": 16 / 9,
+      "2:1": 2 / 1,
+      "1:1": 1 / 1,
+      "16:10": 16 / 10
+    }[aspect];
+    if (ratio == null && aspect !== "free") {
+      var match = aspect.match(/^(\d+(?:\.\d+)?)[x:](\d+(?:\.\d+)?)$/);
+      if (match) {
+        ratio = parseFloat(match[1]) / parseFloat(match[2]);
+      }
+    }
+
+    var orientation = this.runtime.orientation || (window.resources && window.resources.orientation) || "landscape";
+    if (orientation === "any") {
+      orientation = cw > ch ? "landscape" : "portrait";
+    }
+
     if (ratio != null) {
       if (min) {
-        switch (this.runtime.orientation) {
+        switch (orientation) {
           case "portrait":
             ratio = Math.max(ratio, ch / cw);
             break;
@@ -926,7 +946,7 @@ this.Screen = class Screen {
             }
         }
       }
-      switch (this.runtime.orientation) {
+      switch (orientation) {
         case "portrait":
           r = Math.min(cw, ch / ratio) / cw;
           w = cw * r;
@@ -952,17 +972,22 @@ this.Screen = class Screen {
       w = cw;
       h = ch;
     }
-    this.canvas.style["margin-top"] = Math.round((ch - h) / 2) + "px";
     this.canvas.style.width = Math.round(w) + "px";
     this.canvas.style.height = Math.round(h) + "px";
+    if (parent && window.getComputedStyle(parent).display === "flex") {
+      this.canvas.style["margin-top"] = "0px";
+    } else {
+      this.canvas.style["margin-top"] = Math.max(0, Math.round((ch - h) / 2)) + "px";
+    }
     devicePixelRatio = window.devicePixelRatio || 1;
     backingStoreRatio = this.context.webkitBackingStorePixelRatio || this.context.mozBackingStorePixelRatio || this.context.msBackingStorePixelRatio || this.context.oBackingStorePixelRatio || this.context.backingStorePixelRatio || 1;
     this.ratio = devicePixelRatio / backingStoreRatio * Math.max(1, Math.min(2, this.supersampling));
-    this.width = w * this.ratio;
-    this.height = h * this.ratio;
+    this.width = Math.round(w * this.ratio);
+    this.height = Math.round(h * this.ratio);
     this.canvas.width = this.width;
     this.canvas.height = this.height;
-    return this.initContext();
+    this.initContext();
+    return this.updateInterface();
   }
 
   startControl(element) {

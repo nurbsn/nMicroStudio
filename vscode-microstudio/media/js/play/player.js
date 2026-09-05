@@ -1,5 +1,8 @@
 this.Player = class Player {
   constructor(listener) {
+    if (typeof window !== "undefined") {
+      window.player = this;
+    }
     var i, len, ref, source;
     this.listener = listener;
     //src = document.getElementById("code").innerText
@@ -8,14 +11,21 @@ this.Player = class Player {
     this.resources = resources;
     this.request_id = 1;
     this.pending_requests = {};
-    if (resources.sources != null) {
+    if (resources.sources != null && Array.isArray(resources.sources)) {
       ref = resources.sources;
       for (i = 0, len = ref.length; i < len; i++) {
         source = ref[i];
         this.loadSource(source);
       }
+    } else if (resources.microscript != null && Object.keys(resources.microscript).length > 0) {
+      for (const [key, val] of Object.entries(resources.microscript)) {
+        const name = key.split(".")[0];
+        this.sources[name] = val;
+      }
+      this.start();
     } else {
-      this.sources.main = document.getElementById("code").innerText;
+      const codeEl = document.getElementById("code");
+      this.sources.main = codeEl ? (codeEl.textContent || codeEl.innerText || "") : "";
       this.start();
     }
   }
@@ -144,8 +154,15 @@ this.Player = class Player {
   messageReceived(msg) {
     var code, data, err, file;
     data = msg.data;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        return;
+      }
+    }
+    if (!data || typeof data !== "object") return;
     try {
-      data = JSON.parse(data);
       switch (data.name) {
         case "command":
           return this.runtime.runCommand(data.line, (res) => {
@@ -227,8 +244,10 @@ this.Player = class Player {
 
   postMessage(data) {
     var err;
-    if (window !== window.parent) {
-      window.parent.postMessage(JSON.stringify(data), "*");
+    if (typeof window !== "undefined" && window.parent && window !== window.parent) {
+      try {
+        window.parent.postMessage(JSON.stringify(data), "*");
+      } catch (e) {}
     }
     if (this.listener != null) {
       try {
@@ -248,7 +267,7 @@ this.Player = class Player {
 
 };
 
-if ((navigator.serviceWorker != null) && !window.skip_service_worker) {
+if (typeof navigator !== "undefined" && (navigator.serviceWorker != null) && !window.skip_service_worker) {
   navigator.serviceWorker.register('sw.js', {
     scope: location.pathname
   }).then(function(reg) {

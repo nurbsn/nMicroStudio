@@ -4,7 +4,7 @@ this.MicroMap = (function() {
     this.height = height;
     this.block_width = block_width;
     this.block_height = block_height;
-    this.sprites = window.player.runtime.sprites;
+    this.sprites = (typeof window !== "undefined" && window.player && window.player.runtime && window.player.runtime.sprites) ? window.player.runtime.sprites : {};
     this.map = [];
     this.ready = true;
     this.clear();
@@ -205,9 +205,18 @@ this.MicroMap = (function() {
 
 })();
 
-this.LoadMap = function(url, loaded) {
+this.LoadMap = function(url, loaded, data) {
   var map, req;
   map = new MicroMap(1, 1, 1, 1);
+  if (data != null) {
+    map.ready = true;
+    UpdateMap(map, data);
+    map.needs_update = true;
+    if (loaded != null) {
+      setTimeout(loaded, 0);
+    }
+    return map;
+  }
   map.ready = false;
   req = new XMLHttpRequest();
   req.onreadystatechange = (function(_this) {
@@ -224,6 +233,13 @@ this.LoadMap = function(url, loaded) {
       }
     };
   })(this);
+  req.onerror = function() {
+    map.ready = true;
+    map.needs_update = true;
+    if (loaded != null) {
+      return loaded();
+    }
+  };
   req.open("GET", url);
   req.send();
   return map;
@@ -231,7 +247,13 @@ this.LoadMap = function(url, loaded) {
 
 this.UpdateMap = function(map, data) {
   var i, j, k, l, ref1, ref2, s;
-  data = JSON.parse(data);
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (e) {
+      return map;
+    }
+  }
   map.width = data.width;
   map.height = data.height;
   map.block_width = data.block_width;

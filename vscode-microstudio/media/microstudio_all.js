@@ -17813,7 +17813,20 @@ this.MicroVM = class MicroVM {
       return this.sort(funk);
     };
     this.clearWarnings();
-    this.runner = new Runner(this);
+    const lang = (window.language || (window.resources && window.resources.language) || "microscript").toLowerCase();
+    if (lang === "javascript" || lang === "js") {
+      const RunnerClass = (typeof JavaScriptRunner !== "undefined") ? JavaScriptRunner : (window.JavaScriptRunner || this.JavaScriptRunner);
+      this.runner = new RunnerClass(this);
+    } else if (lang === "python" || lang === "py") {
+      const RunnerClass = (typeof PythonRunner !== "undefined") ? PythonRunner : (window.PythonRunner || this.PythonRunner);
+      this.runner = new RunnerClass(this);
+    } else if (lang === "lua") {
+      const RunnerClass = (typeof LuaRunner !== "undefined") ? LuaRunner : (window.LuaRunner || this.LuaRunner);
+      this.runner = new RunnerClass(this);
+    } else {
+      const RunnerClass = (typeof MicroScriptRunner !== "undefined") ? MicroScriptRunner : (window.MicroScriptRunner || this.MicroScriptRunner);
+      this.runner = new RunnerClass(this);
+    }
   }
 
   clearWarnings() {

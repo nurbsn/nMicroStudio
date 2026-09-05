@@ -116,8 +116,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Exporting game to HTML5...',
-        'export_html_success': 'Successfully exported game to: {0}',
+        'export_html_success': 'Successfully exported game package to: {0}',
         'open_in_browser': 'Open in Browser',
+        'open_folder': 'Open Folder',
+        'export_html_select_folder': 'Select Export Folder',
         'preview_project_not_found': 'No microStudio project found to preview.'
     },
     pl: {
@@ -233,8 +235,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Eksportowanie gry do HTML5...',
-        'export_html_success': 'Pomyślnie wyeksportowano grę do: {0}',
+        'export_html_success': 'Pomyślnie wyeksportowano pakiet gry do: {0}',
         'open_in_browser': 'Otwórz w przeglądarce',
+        'open_folder': 'Otwórz katalog',
+        'export_html_select_folder': 'Wybierz katalog eksportu',
         'preview_project_not_found': 'Nie znaleziono projektu microStudio do uruchomienia podglądu.'
     },
     fr: {
@@ -350,8 +354,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Exportation du jeu en HTML5...',
-        'export_html_success': 'Jeu exporté avec succès vers : {0}',
+        'export_html_success': 'Package de jeu exporté avec succès vers : {0}',
         'open_in_browser': 'Ouvrir dans le navigateur',
+        'open_folder': 'Ouvrir le dossier',
+        'export_html_select_folder': 'Sélectionner le dossier d\'exportation',
         'preview_project_not_found': 'Aucun projet microStudio trouvé pour l\'aperçu.'
     },
     de: {
@@ -467,8 +473,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Spiel wird als HTML5 exportiert...',
-        'export_html_success': 'Spiel erfolgreich exportiert nach: {0}',
+        'export_html_success': 'Spielpaket erfolgreich exportiert nach: {0}',
         'open_in_browser': 'Im Browser öffnen',
+        'open_folder': 'Ordner öffnen',
+        'export_html_select_folder': 'Exportordner auswählen',
         'preview_project_not_found': 'Kein microStudio-Projekt für die Vorschau gefunden.'
     },
     es: {
@@ -584,8 +592,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Exportando juego a HTML5...',
-        'export_html_success': 'Juego exportado con éxito a: {0}',
+        'export_html_success': 'Paquete del juego exportado con éxito a: {0}',
         'open_in_browser': 'Abrir en el navegador',
+        'open_folder': 'Abrir carpeta',
+        'export_html_select_folder': 'Seleccionar carpeta de exportación',
         'preview_project_not_found': 'No se encontró ningún proyecto microStudio para la vista previa.'
     },
     it: {
@@ -701,8 +711,10 @@ const translations: Record<SupportedLocale, Record<string, string>> = {
 
         // HTML Export & Preview
         'export_html_title': 'Esportazione del gioco in HTML5...',
-        'export_html_success': 'Gioco esportato con successo in: {0}',
+        'export_html_success': 'Pacchetto di gioco esportato con successo in: {0}',
         'open_in_browser': 'Apri nel browser',
+        'open_folder': 'Apri cartella',
+        'export_html_select_folder': 'Seleziona cartella di esportazione',
         'preview_project_not_found': 'Nessun progetto microStudio trovato per l\'anteprima.'
     }
 };

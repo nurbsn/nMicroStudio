@@ -5,12 +5,15 @@ import * as fs from 'fs';
 export class HtmlBundler {
     /**
      * Builds a self-contained HTML document for the given microStudio project.
+     * @param forWebview When true, generates development preview with toolbar and console. When false, generates clean game without wrapper.
+     * @param isPackage When true, uses relative URLs and external microstudio_play.js for packaged directory export.
      */
     public static async bundle(
         projectPath: string,
         extensionPath: string,
         forWebview: boolean = false,
-        webview?: vscode.Webview
+        webview?: vscode.Webview,
+        isPackage: boolean = false
     ): Promise<string> {
         const pjPath = path.join(projectPath, 'project.json');
         let projectJson: any = {
@@ -31,6 +34,7 @@ export class HtmlBundler {
         const resources: any = {
             title: projectJson.title || path.basename(projectPath),
             slug: projectJson.slug || path.basename(projectPath),
+            language: projectJson.language || "microscript",
             orientation: projectJson.orientation || "landscape",
             aspect: projectJson.aspect || "16:9",
             graphics: projectJson.graphics || "standard",
@@ -58,7 +62,7 @@ export class HtmlBundler {
         // 2. Read Sprites (sprites/)
         const spritesDir = path.join(projectPath, 'sprites');
         if (fs.existsSync(spritesDir)) {
-            this.collectSpritesRecursively(spritesDir, '', resources, forWebview, webview);
+            this.collectSpritesRecursively(spritesDir, '', resources, forWebview, webview, isPackage);
         }
 
         // 3. Read Maps (maps/)
@@ -74,6 +78,8 @@ export class HtmlBundler {
                         let mapUrl: string;
                         if (forWebview && webview) {
                             mapUrl = webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
+                        } else if (isPackage) {
+                            mapUrl = `maps/${file}`;
                         } else {
                             const b64 = Buffer.from(JSON.stringify(mapData)).toString('base64');
                             mapUrl = `data:application/json;base64,${b64}`;
@@ -91,24 +97,28 @@ export class HtmlBundler {
         }
 
         // 4. Read Sounds, Music, Assets
-        this.collectMediaFolder(projectPath, 'sounds', resources.sounds, forWebview, webview, 'audio/wav');
-        this.collectMediaFolder(projectPath, 'music', resources.music, forWebview, webview, 'audio/mp3');
-        this.collectMediaFolder(projectPath, 'assets', resources.assets, forWebview, webview, 'application/octet-stream');
+        this.collectMediaFolder(projectPath, 'sounds', resources.sounds, forWebview, webview, 'audio/wav', isPackage);
+        this.collectMediaFolder(projectPath, 'music', resources.music, forWebview, webview, 'audio/mp3', isPackage);
+        this.collectMediaFolder(projectPath, 'assets', resources.assets, forWebview, webview, 'application/octet-stream', isPackage);
 
         // Combine microscript code
         const allCode = Object.values(resources.microscript).join('\n\n');
 
-        // Read microstudio_play.js engine
+        // Read microstudio_play.js engine if inlining
         const playJsPath = path.join(extensionPath, 'media', 'microstudio_play.js');
-        const playJsContent = fs.existsSync(playJsPath) ? fs.readFileSync(playJsPath, 'utf8') : '';
+        const playJsContent = (!isPackage && fs.existsSync(playJsPath)) ? fs.readFileSync(playJsPath, 'utf8') : '';
 
-        // Generate HTML
-        return `<!DOCTYPE html>
+        const hasIcon = fs.existsSync(path.join(projectPath, 'icon.png'));
+
+        // If forWebview is true: include toolbar, console, and interactive debug controls
+        if (forWebview) {
+            return `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>${this.escapeHtml(resources.title)}</title>
+    ${hasIcon ? '<link rel="icon" type="image/png" href="icon.png">' : ''}
     <style>
         body, html {
             width: 100%;
@@ -168,6 +178,8 @@ export class HtmlBundler {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 0;
+            min-width: 0;
         }
         #canvaswrapper {
             width: 100%;
@@ -178,12 +190,11 @@ export class HtmlBundler {
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
         canvas {
             display: block;
-            max-width: 100%;
-            max-height: 100%;
-            margin: auto;
+            box-sizing: content-box;
             image-rendering: pixelated;
             image-rendering: crisp-edges;
         }
@@ -247,17 +258,26 @@ export class HtmlBundler {
     </div>
 
     <script id="code" type="text/microscript">${allCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</script>
-    <script>window.skip_service_worker = true;</script>
+    <script>
+        window.skip_service_worker = true;
+        window.exported_project = true;
+    </script>
     <script>
 ${playJsContent}
     </script>
     <script>
-        const resources = ${JSON.stringify(resources)};
-        resources.sources = null; // Force fallback to #code
-        window.aspect = resources.aspect || "16x9";
-        window.orientation = resources.orientation || "landscape";
+        const resources = ${JSON.stringify(resources).replace(/</g, '\\u003c')};
+        window.resources = resources;
+        window.language = resources.language || "microscript";
+        window.ms_aspect = resources.aspect || "16:9";
+        window.ms_orientation = resources.orientation || "landscape";
+        try {
+            window.aspect = resources.aspect || "16:9";
+            window.orientation = resources.orientation || "landscape";
+        } catch (e) {}
         window.graphics = resources.graphics || "standard";
         window.ms_libs = resources.libs || [];
+        window.exported_project = true;
         
         // Intercept Console
         const consoleOutput = document.getElementById('console-output');
@@ -281,53 +301,240 @@ ${playJsContent}
         console.error = function(...args) { appendLog(args.join(' '), 'error'); origError.apply(console, args); };
         
         window.onerror = function(message, source, lineno, colno, error) {
-            appendLog(message, 'error');
+            const loc = (error && error.stack) ? ('\\n' + error.stack) : (source ? (' at ' + source + ':' + lineno + ':' + colno) : '');
+            appendLog(message + loc, 'error');
         };
 
         let player;
         try {
-            player = new Player();
+            window.player = player = new Player();
         } catch (err) {
-            console.error("Player initialization error: " + err);
+            console.error("Player initialization error: " + (err && err.stack ? err.stack : err));
         }
 
-        const vscodeApi = (typeof acquireVsCodeApi === 'function') ? acquireVsCodeApi() : null;
+        let vscodeApi = null;
+        try {
+            if (typeof acquireVsCodeApi === 'function') {
+                vscodeApi = acquireVsCodeApi();
+            } else if (typeof window !== 'undefined' && typeof window.acquireVsCodeApi === 'function') {
+                vscodeApi = window.acquireVsCodeApi();
+            }
+        } catch (e) {
+            vscodeApi = (typeof window !== 'undefined' && window._vscodeApi) ? window._vscodeApi : null;
+        }
+        if (vscodeApi && typeof window !== 'undefined') {
+            window._vscodeApi = vscodeApi;
+        }
 
         // UI Controls
         document.getElementById('btn-play').addEventListener('click', () => {
+            if (player && player.runtime && player.runtime.started) {
+                player.runtime.resume();
+            }
             window.postMessage(JSON.stringify({ name: "resume" }), "*");
         });
         document.getElementById('btn-pause').addEventListener('click', () => {
+            if (player && player.runtime) {
+                player.runtime.stop();
+            }
             window.postMessage(JSON.stringify({ name: "pause" }), "*");
         });
-        document.getElementById('btn-reload').addEventListener('click', () => {
-            if (vscodeApi) {
-                vscodeApi.postMessage({ command: 'reload' });
-            } else {
-                location.reload();
-            }
-        });
+        const btnReload = document.getElementById('btn-reload');
+        if (btnReload) {
+            btnReload.addEventListener('click', () => {
+                btnReload.style.opacity = '0.5';
+                btnReload.textContent = '↻ ...';
+                try {
+                    if (player && player.runtime) {
+                        player.runtime.stop();
+                    }
+                } catch (e) {}
+                if (vscodeApi) {
+                    vscodeApi.postMessage({ command: 'reload' });
+                } else {
+                    location.reload();
+                }
+            });
+        }
         document.getElementById('btn-clear').addEventListener('click', () => {
             consoleOutput.innerHTML = '';
         });
         document.getElementById('btn-toggle-console').addEventListener('click', () => {
             const el = document.getElementById('console-container');
             el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+            if (player) {
+                setTimeout(() => player.resize(), 20);
+            }
         });
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => {
+                if (player) {
+                    player.resize();
+                }
+            });
+            const gc = document.getElementById('game-container');
+            if (gc) ro.observe(gc);
+        }
+    </script>
+</body>
+</html>`;
+        }
+
+        // Clean Standalone Game (no toolbar, no buttons, no console)
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>${this.escapeHtml(resources.title)}</title>
+    ${hasIcon ? '<link rel="icon" type="image/png" href="icon.png">' : ''}
+    <style>
+        body, html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #canvaswrapper {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            box-sizing: content-box;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvaswrapper"></div>
+
+    <script id="code" type="text/microscript">${allCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</script>
+    <script>
+        window.skip_service_worker = true;
+        window.exported_project = true;
+    </script>
+    ${isPackage ? '<script src="microstudio_play.js"></script>' : `<script>\n${playJsContent}\n    </script>`}
+    <script>
+        const resources = ${JSON.stringify(resources).replace(/</g, '\\u003c')};
+        window.resources = resources;
+        window.language = resources.language || "microscript";
+        window.ms_aspect = resources.aspect || "16:9";
+        window.ms_orientation = resources.orientation || "landscape";
+        try {
+            window.aspect = resources.aspect || "16:9";
+            window.orientation = resources.orientation || "landscape";
+        } catch (e) {}
+        window.graphics = resources.graphics || "standard";
+        window.ms_libs = resources.libs || [];
+        window.exported_project = true;
+
+        let player;
+        try {
+            window.player = player = new Player();
+        } catch (err) {
+            console.error("Player initialization error: " + (err && err.stack ? err.stack : err));
+        }
+
+        window.addEventListener("resize", () => {
+            if (player) player.resize();
+        });
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => {
+                if (player) {
+                    player.resize();
+                }
+            });
+            const wrapper = document.getElementById('canvaswrapper');
+            if (wrapper) ro.observe(wrapper);
+        }
     </script>
 </body>
 </html>`;
     }
 
-    public static async exportStandalone(
+    /**
+     * Exports a complete package folder containing index.html, microstudio_play.js, and all project assets.
+     */
+    public static async exportPackage(
         projectPath: string,
-        outputFilePath: string,
+        outputDir: string,
         extensionPath: string
     ): Promise<string> {
-        const html = await this.bundle(projectPath, extensionPath, false);
-        fs.mkdirSync(path.dirname(outputFilePath), { recursive: true });
-        fs.writeFileSync(outputFilePath, html, 'utf8');
-        return outputFilePath;
+        fs.mkdirSync(outputDir, { recursive: true });
+
+        // 1. Copy engine runtime
+        const playJsPath = path.join(extensionPath, 'media', 'microstudio_play.js');
+        if (fs.existsSync(playJsPath)) {
+            fs.copyFileSync(playJsPath, path.join(outputDir, 'microstudio_play.js'));
+        }
+
+        // 2. Copy asset folders if present
+        const foldersToCopy = ['sprites', 'maps', 'sounds', 'music', 'assets', 'ms'];
+        for (const folder of foldersToCopy) {
+            const srcFolder = path.join(projectPath, folder);
+            if (fs.existsSync(srcFolder)) {
+                this.copyDirSync(srcFolder, path.join(outputDir, folder));
+            }
+        }
+
+        // 3. Copy project.json and icon.png if present
+        const projectJsonPath = path.join(projectPath, 'project.json');
+        if (fs.existsSync(projectJsonPath)) {
+            fs.copyFileSync(projectJsonPath, path.join(outputDir, 'project.json'));
+        }
+        const iconPath = path.join(projectPath, 'icon.png');
+        if (fs.existsSync(iconPath)) {
+            fs.copyFileSync(iconPath, path.join(outputDir, 'icon.png'));
+        }
+
+        // 4. Generate clean index.html with package references (no toolbar, no console)
+        const html = await this.bundle(projectPath, extensionPath, false, undefined, true);
+        const indexHtmlPath = path.join(outputDir, 'index.html');
+        fs.writeFileSync(indexHtmlPath, html, 'utf8');
+
+        return indexHtmlPath;
+    }
+
+    public static async exportStandalone(
+        projectPath: string,
+        outputPath: string,
+        extensionPath: string
+    ): Promise<string> {
+        const targetDir = outputPath.toLowerCase().endsWith('.html') ? path.dirname(outputPath) : outputPath;
+        return await this.exportPackage(projectPath, targetDir, extensionPath);
+    }
+
+    private static copyDirSync(src: string, dest: string) {
+        if (!fs.existsSync(src)) return;
+        fs.mkdirSync(dest, { recursive: true });
+        const entries = fs.readdirSync(src, { withFileTypes: true });
+        for (const entry of entries) {
+            const srcPath = path.join(src, entry.name);
+            const destPath = path.join(dest, entry.name);
+            if (entry.isDirectory()) {
+                this.copyDirSync(srcPath, destPath);
+            } else if (entry.isFile()) {
+                fs.copyFileSync(srcPath, destPath);
+            }
+        }
     }
 
     private static collectSpritesRecursively(
@@ -335,19 +542,22 @@ ${playJsContent}
         baseRelative: string,
         resources: any,
         forWebview: boolean,
-        webview?: vscode.Webview
+        webview?: vscode.Webview,
+        isPackage: boolean = false
     ) {
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
             const fullPath = path.join(dir, entry.name);
             const relativeName = baseRelative ? `${baseRelative}/${entry.name}` : entry.name;
             if (entry.isDirectory()) {
-                this.collectSpritesRecursively(fullPath, relativeName, resources, forWebview, webview);
+                this.collectSpritesRecursively(fullPath, relativeName, resources, forWebview, webview, isPackage);
             } else if (entry.isFile() && entry.name.endsWith('.png')) {
                 const spriteName = relativeName.replace(/\.png$/, '').replace(/\//g, '-');
                 let spriteUrl: string;
                 if (forWebview && webview) {
                     spriteUrl = webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
+                } else if (isPackage) {
+                    spriteUrl = `sprites/${relativeName}`;
                 } else {
                     const b64 = fs.readFileSync(fullPath).toString('base64');
                     spriteUrl = `data:image/png;base64,${b64}`;
@@ -377,7 +587,8 @@ ${playJsContent}
         targetArray: any[],
         forWebview: boolean,
         webview?: vscode.Webview,
-        mimeType: string = 'application/octet-stream'
+        mimeType: string = 'application/octet-stream',
+        isPackage: boolean = false
     ) {
         const dir = path.join(projectPath, folderName);
         if (!fs.existsSync(dir)) return;
@@ -389,6 +600,8 @@ ${playJsContent}
                 let mediaUrl: string;
                 if (forWebview && webview) {
                     mediaUrl = webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
+                } else if (isPackage) {
+                    mediaUrl = `${folderName}/${file.name}`;
                 } else {
                     const b64 = fs.readFileSync(fullPath).toString('base64');
                     mediaUrl = `data:${mimeType};base64,${b64}`;
