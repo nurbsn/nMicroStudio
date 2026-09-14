@@ -28,6 +28,22 @@ export class MicroScriptCompletionProvider implements
     }
 
     /**
+     * Determines whether the document belongs to a microStudio project or is a microScript file
+     */
+    public isMicroStudioDocument(document: vscode.TextDocument): boolean {
+        if (document.languageId === 'microscript' || document.fileName.endsWith('.ms')) {
+            return true;
+        }
+        const fsPath = document.uri.fsPath;
+        if (fsPath.includes('/ms/') || fsPath.includes('\\ms\\') || 
+            fsPath.includes('/libs/') || fsPath.includes('\\libs\\') || 
+            fsPath.includes('/lib/') || fsPath.includes('\\lib\\')) {
+            return true;
+        }
+        return this.findProjectRoot(document.uri) !== null;
+    }
+
+    /**
      * Reads active libraries list from project.json
      */
     private getProjectActiveLibraries(projectRoot: string | null): string[] {
@@ -45,7 +61,7 @@ export class MicroScriptCompletionProvider implements
     }
 
     /**
-     * Scans project files (.ms, .js, .py) and doc/*.md to extract custom and library functions/classes/docstrings
+     * Scans project files (.ms, .js, .py, .lua) and doc/*.md to extract custom and library functions/classes/docstrings
      */
     private scanProjectSymbols(projectRoot: string | null): ApiDocItem[] {
         if (!projectRoot) return [];
@@ -61,14 +77,15 @@ export class MicroScriptCompletionProvider implements
         const scanDirs = [
             path.join(projectRoot, 'ms'),
             path.join(projectRoot, 'libs'),
-            path.join(projectRoot, 'lib')
+            path.join(projectRoot, 'lib'),
+            path.join(projectRoot, 'src')
         ];
 
         for (const dir of scanDirs) {
             if (!fs.existsSync(dir)) continue;
             const files = this.scanDirectoryFiles(dir, dir);
             for (const file of files) {
-                if (file.endsWith('.ms') || file.endsWith('.js')) {
+                if (file.endsWith('.ms') || file.endsWith('.js') || file.endsWith('.py') || file.endsWith('.lua')) {
                     const fullPath = path.join(dir, file);
                     try {
                         const content = fs.readFileSync(fullPath, 'utf8');
@@ -114,7 +131,7 @@ export class MicroScriptCompletionProvider implements
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
 
-            // Comment lines
+            // Comment lines (# for Python/MicroScript, // for JS, -- for Lua)
             if (line.startsWith('#') || line.startsWith('//') || line.startsWith('--')) {
                 const clean = line.replace(/^(#|\/\/|--)\s*/, '');
                 pendingComment.push(clean);
@@ -129,12 +146,20 @@ export class MicroScriptCompletionProvider implements
                 continue;
             }
 
-            // Pattern 1: name = function(arg1, arg2, arg3)
-            const fnAssignMatch = line.match(/^([a-zA-Z0-9_.]+)\s*=\s*function\s*\(([^)]*)\)/);
-            if (fnAssignMatch) {
-                const name = fnAssignMatch[1];
-                const rawArgs = fnAssignMatch[2].trim();
-                const argsList = rawArgs ? rawArgs.split(',').map(a => a.trim().split('=')[0].trim()) : [];
+            // Pattern 1: name = function(args) / const name = function(args) / local name = function(args)
+            const fnAssignMatch = line.match(/^(?:const|let|var|local)?\s*([a-zA-Z0-9_.]+)\s*=\s*function\s*\(([^)]*)\)/);
+            // Pattern 2: const/let/var name = (args) =>
+            const fnArrowMatch = line.match(/^(?:const|let|var)?\s*([a-zA-Z0-9_.]+)\s*=\s*\(([^)]*)\)\s*=>/);
+            // Pattern 3: function name(args) / local function name(args) / function obj:name(args)
+            const fnDefMatch = line.match(/^(?:local\s+)?function\s+([a-zA-Z0-9_:.]+)\s*\(([^)]*)\)/);
+            // Pattern 4: Python def name(args):
+            const pyDefMatch = line.match(/^def\s+([a-zA-Z0-9_]+)\s*\(([^)]*)\)\s*:/);
+
+            const match = fnAssignMatch || fnArrowMatch || fnDefMatch || pyDefMatch;
+            if (match) {
+                const name = match[1].replace(':', '.');
+                const rawArgs = (match[2] || '').trim();
+                const argsList = rawArgs ? rawArgs.split(',').map(a => a.trim().split('=')[0].trim().split(':')[0].trim()) : [];
                 
                 const commentText = pendingComment.join('\n');
                 const docText = commentText 
@@ -155,33 +180,7 @@ export class MicroScriptCompletionProvider implements
                 continue;
             }
 
-            // Pattern 2: function name(arg1, arg2)
-            const fnDefMatch = line.match(/^function\s+([a-zA-Z0-9_.]+)\s*\(([^)]*)\)/);
-            if (fnDefMatch) {
-                const name = fnDefMatch[1];
-                const rawArgs = fnDefMatch[2].trim();
-                const argsList = rawArgs ? rawArgs.split(',').map(a => a.trim().split('=')[0].trim()) : [];
-                
-                const commentText = pendingComment.join('\n');
-                const docText = commentText 
-                    ? `📘 **Funkcja z pliku \`${filePath}\`**\n\n${commentText}`
-                    : `📘 **Funkcja zdefiniowana w \`${filePath}\`**`;
-
-                outSymbols.push({
-                    label: name,
-                    kind: vscode.CompletionItemKind.Function,
-                    detail: `${name}(${rawArgs})`,
-                    doc: docText,
-                    parameters: argsList.map(a => ({ name: a, doc: `Parametr \`${a}\`` })),
-                    snippet: `${name}(${argsList.map((a, idx) => `\${${idx + 1}:${a}}`).join(', ')})`,
-                    category: 'library'
-                });
-
-                pendingComment = [];
-                continue;
-            }
-
-            // Pattern 3: Class declaration: Name = class or class Name
+            // Pattern 5: Class declaration: Name = class / class Name / class Name:
             const classMatch = line.match(/^([a-zA-Z0-9_]+)\s*=\s*class\b/) || line.match(/^class\s+([a-zA-Z0-9_]+)\b/);
             if (classMatch) {
                 const className = classMatch[1];
@@ -328,6 +327,10 @@ export class MicroScriptCompletionProvider implements
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
     ): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
+        if (!this.isMicroStudioDocument(document)) {
+            return undefined;
+        }
+
         const projectRoot = this.findProjectRoot(document.uri);
         const allItems = this.getAllActiveApiItems(projectRoot);
         const completions: vscode.CompletionItem[] = [];
@@ -437,6 +440,10 @@ export class MicroScriptCompletionProvider implements
         position: vscode.Position,
         token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Hover> {
+        if (!this.isMicroStudioDocument(document)) {
+            return undefined;
+        }
+
         const lineText = document.lineAt(position.line).text;
         const projectRoot = this.findProjectRoot(document.uri);
         const allItems = this.getAllActiveApiItems(projectRoot);
@@ -477,7 +484,9 @@ export class MicroScriptCompletionProvider implements
         const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_.]+/);
         if (wordRange) {
             const word = document.getText(wordRange);
-            const match = allItems.find(i => i.label === word || i.label.split('.').pop() === word || i.label.startsWith(word + '.'));
+            const match = allItems.find(i => i.label === word) || 
+                          allItems.find(i => i.label.split('.').pop() === word) ||
+                          allItems.find(i => i.label.startsWith(word + '.'));
             if (match) {
                 return this.buildHoverForMatch(match, wordRange);
             }
@@ -486,7 +495,8 @@ export class MicroScriptCompletionProvider implements
         // 3. Check if cursor/hover is anywhere inside an enclosing function call (e.g. inside screen.drawSprite("", m5x, m5y...))
         const callInfo = this.parseEnclosingFunctionCall(lineText, position.character);
         if (callInfo) {
-            const fnMatch = allItems.find(i => i.label === callInfo.functionName || i.label.split('.').pop() === callInfo.functionName);
+            const fnMatch = allItems.find(i => i.label === callInfo.functionName) ||
+                            allItems.find(i => i.label.split('.').pop() === callInfo.functionName);
             if (fnMatch) {
                 const md = new vscode.MarkdownString();
                 md.appendCodeblock(fnMatch.detail, 'microscript');
@@ -547,6 +557,10 @@ export class MicroScriptCompletionProvider implements
         token: vscode.CancellationToken,
         context: vscode.SignatureHelpContext
     ): vscode.ProviderResult<vscode.SignatureHelp> {
+        if (!this.isMicroStudioDocument(document)) {
+            return undefined;
+        }
+
         const lineText = document.lineAt(position.line).text;
         const callInfo = this.parseEnclosingFunctionCall(lineText, position.character);
         if (!callInfo) return null;
@@ -554,7 +568,8 @@ export class MicroScriptCompletionProvider implements
         const projectRoot = this.findProjectRoot(document.uri);
         const allItems = this.getAllActiveApiItems(projectRoot);
 
-        const match = allItems.find(i => i.label === callInfo.functionName || i.label.split('.').pop() === callInfo.functionName);
+        const match = allItems.find(i => i.label === callInfo.functionName) || 
+                      allItems.find(i => i.label.split('.').pop() === callInfo.functionName);
         if (!match || !match.parameters || match.parameters.length === 0) return null;
 
         const sigHelp = new vscode.SignatureHelp();

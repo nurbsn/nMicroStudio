@@ -24,24 +24,58 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(SpriteEditorProvider.register(context));
     context.subscriptions.push(MapEditorProvider.register(context));
 
+    // Document selector covering microStudio languages, .ms files, and microStudio project folders
+    const MICROSTUDIO_DOCUMENT_SELECTOR: vscode.DocumentSelector = [
+        { language: 'microscript' },
+        { scheme: 'file', pattern: '**/*.ms' },
+        { scheme: 'file', pattern: '**/ms/**' },
+        { scheme: 'file', pattern: '**/libs/**' },
+        { scheme: 'file', pattern: '**/lib/**' },
+        { scheme: 'file', pattern: '**/src/**' },
+        { scheme: 'file', language: 'javascript' },
+        { scheme: 'file', language: 'python' },
+        { scheme: 'file', language: 'lua' }
+    ];
+
     // Register MicroScript IntelliSense / Completion, Hover & Signature Help Provider
     const completionProvider = new MicroScriptCompletionProvider();
     context.subscriptions.push(
-        vscode.languages.registerCompletionItemProvider('microscript', completionProvider, '.', '"', '/')
+        vscode.languages.registerCompletionItemProvider(MICROSTUDIO_DOCUMENT_SELECTOR, completionProvider, '.', '"', '/', ':')
     );
     context.subscriptions.push(
-        vscode.languages.registerHoverProvider('microscript', completionProvider)
+        vscode.languages.registerHoverProvider(MICROSTUDIO_DOCUMENT_SELECTOR, completionProvider)
     );
     context.subscriptions.push(
-        vscode.languages.registerSignatureHelpProvider('microscript', completionProvider, '(', ',')
+        vscode.languages.registerSignatureHelpProvider(MICROSTUDIO_DOCUMENT_SELECTOR, completionProvider, '(', ',')
     );
 
     // Register F5 Debug / Run hook to launch microStudio Preview
+    const previewDebugProvider = {
+        resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration): vscode.ProviderResult<vscode.DebugConfiguration> {
+            vscode.commands.executeCommand('microstudio.preview');
+            return null; // Cancel default debugger session, we launched the preview
+        }
+    };
+
     context.subscriptions.push(
-        vscode.debug.registerDebugConfigurationProvider('microscript', {
+        vscode.debug.registerDebugConfigurationProvider('microscript', previewDebugProvider)
+    );
+    context.subscriptions.push(
+        vscode.debug.registerDebugConfigurationProvider('*', {
             resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration): vscode.ProviderResult<vscode.DebugConfiguration> {
-                vscode.commands.executeCommand('microstudio.preview');
-                return null; // Cancel default debugger session, we launched the preview
+                const activeEditor = vscode.window.activeTextEditor;
+                if (activeEditor) {
+                    const isMs = activeEditor.document.languageId === 'microscript' || activeEditor.document.fileName.endsWith('.ms');
+                    let hasProject = false;
+                    if (folder && fs.existsSync(path.join(folder.uri.fsPath, 'project.json'))) {
+                        hasProject = true;
+                    }
+                    if (isMs || hasProject) {
+                        vscode.commands.executeCommand('microstudio.preview');
+                        return null;
+                    }
+                }
+                return config;
             }
         })
     );
