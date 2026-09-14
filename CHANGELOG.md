@@ -2,6 +2,16 @@
 
 All notable changes to the **MicroStudio for VS Code** extension will be documented in this file.
 
+## [0.1.13] - 2026-09-14
+
+### Added
+- **Rich Live Documentation & IntelliSense**: Added complete in-editor API documentation, tooltips, parameter descriptions, and examples for all core microStudio modules (`screen`, `audio`, `mouse`, `touch`, `keyboard`, `gamepad`, `storage`, `system`, lifecycle hooks, and math).
+- **Library API Reference & Autocompletion**: Added built-in documentation and method definitions for official microStudio libraries including `m2d` (micro2D physics), `matter` (Matter.js), `tween` (Tween.js), `howler` (Howler.js), `pixi` (PixiJS), `three` (Three.js), and `matrix` (Vector math).
+- **Signature Help Provider**: Added parameter hints and active argument highlighting inside parentheses when typing function calls (`(` and `,`).
+- **Dynamic Project & Library Code Scanner**: Automatically analyzes functions, classes, and preceding doc-comments across project `.ms` and `.js` files, as well as `doc/*.md` files, providing hover and auto-complete support for custom code and downloaded libraries.
+
+---
+
 ## [0.1.12] - 2026-09-05
 
 ### Added

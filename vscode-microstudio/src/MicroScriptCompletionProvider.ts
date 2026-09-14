@@ -1,433 +1,23 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { ApiDocItem, BUILTIN_API_DATABASE, LIBRARIES_API_DATABASE } from './MicroScriptDocDatabase';
 
-interface DocItem {
-    label: string;
-    kind: vscode.CompletionItemKind;
-    detail: string;
-    doc: string;
-    snippet?: string;
-}
+export class MicroScriptCompletionProvider implements 
+    vscode.CompletionItemProvider, 
+    vscode.HoverProvider, 
+    vscode.SignatureHelpProvider 
+{
+    private static cachedProjectSymbols: Map<string, { time: number; symbols: ApiDocItem[] }> = new Map();
 
-export class MicroScriptCompletionProvider implements vscode.CompletionItemProvider, vscode.HoverProvider {
-    private items: DocItem[] = [
-        // Life cycle
-        {
-            label: 'init',
-            kind: vscode.CompletionItemKind.Function,
-            detail: 'init = function()',
-            doc: 'Funkcja wywoływana jednorazowo przy starcie gry microStudio.',
-            snippet: 'init = function()\n\t$0\nend'
-        },
-        {
-            label: 'update',
-            kind: vscode.CompletionItemKind.Function,
-            detail: 'update = function()',
-            doc: 'Główna pętla logiki gry (domyślnie 60 razy na sekundę).',
-            snippet: 'update = function()\n\t$0\nend'
-        },
-        {
-            label: 'draw',
-            kind: vscode.CompletionItemKind.Function,
-            detail: 'draw = function()',
-            doc: 'Główna pętla renderowania grafiki na ekranie.',
-            snippet: 'draw = function()\n\tscreen.clear()\n\t$0\nend'
-        },
-        {
-            label: 'print',
-            kind: vscode.CompletionItemKind.Function,
-            detail: 'print(value)',
-            doc: 'Wypisuje wartość w konsoli microStudio.',
-            snippet: 'print($1)'
-        },
-
-        // screen
-        {
-            label: 'screen.clear',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.clear(color)',
-            doc: 'Czyści ekran wybranym kolorem (np. "rgb(0,0,0)", "#111", "rgba(0,0,0,0.5)").',
-            snippet: 'screen.clear("${1:#000}")'
-        },
-        {
-            label: 'screen.drawSprite',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawSprite(name, x, y, width, height)',
-            doc: 'Rysuje Sprite o podanej nazwie na podanych współrzędnych ekranu.',
-            snippet: 'screen.drawSprite("${1:sprite_name}", ${2:0}, ${3:0}, ${4:32}, ${5:32})'
-        },
-        {
-            label: 'screen.drawMap',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawMap(name, x, y, width, height)',
-            doc: 'Rysuje Mapę kafelkową na ekranie.',
-            snippet: 'screen.drawMap("${1:map_name}", ${2:0}, ${3:0}, ${4:screen.width}, ${5:screen.height})'
-        },
-        {
-            label: 'screen.fillRect',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.fillRect(x, y, width, height, color)',
-            doc: 'Rysuje wypełniony prostokąt.',
-            snippet: 'screen.fillRect(${1:0}, ${2:0}, ${3:50}, ${4:50}, "${5:#fff}")'
-        },
-        {
-            label: 'screen.drawRect',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawRect(x, y, width, height, color)',
-            doc: 'Rysuje obrys prostokąta.',
-            snippet: 'screen.drawRect(${1:0}, ${2:0}, ${3:50}, ${4:50}, "${5:#fff}")'
-        },
-        {
-            label: 'screen.fillRound',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.fillRound(x, y, width, height, color)',
-            doc: 'Rysuje wypełnione koło / elipsę.',
-            snippet: 'screen.fillRound(${1:0}, ${2:0}, ${3:30}, ${4:30}, "${5:#f00}")'
-        },
-        {
-            label: 'screen.drawRound',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawRound(x, y, width, height, color)',
-            doc: 'Rysuje obrys koła / elipsy.',
-            snippet: 'screen.drawRound(${1:0}, ${2:0}, ${3:30}, ${4:30}, "${5:#f00}")'
-        },
-        {
-            label: 'screen.drawLine',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawLine(x1, y1, x2, y2, color)',
-            doc: 'Rysuje linię między dwoma punktami.',
-            snippet: 'screen.drawLine(${1:0}, ${2:0}, ${3:50}, ${4:50}, "${5:#fff}")'
-        },
-        {
-            label: 'screen.drawText',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.drawText(text, x, y, size, color)',
-            doc: 'Wyświetla napis na ekranie.',
-            snippet: 'screen.drawText("${1:Hello}", ${2:0}, ${3:0}, ${4:20}, "${5:#fff}")'
-        },
-        {
-            label: 'screen.textWidth',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.textWidth(text, size)',
-            doc: 'Zwraca szerokość tekstu w pikselach.',
-            snippet: 'screen.textWidth("${1:text}", ${2:20})'
-        },
-        {
-            label: 'screen.setAlpha',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.setAlpha(alpha)',
-            doc: 'Ustawia globalną przezroczystość rysowania (od 0 do 1).',
-            snippet: 'screen.setAlpha(${1:1.0})'
-        },
-        {
-            label: 'screen.setTranslation',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.setTranslation(x, y)',
-            doc: 'Przesuwa układ współrzędnych kamery ekranu.',
-            snippet: 'screen.setTranslation(${1:x}, ${2:y})'
-        },
-        {
-            label: 'screen.setScale',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.setScale(sx, sy)',
-            doc: 'Skaluje układ współrzędnych.',
-            snippet: 'screen.setScale(${1:1}, ${2:1})'
-        },
-        {
-            label: 'screen.setRotation',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'screen.setRotation(angle)',
-            doc: 'Obraca układ współrzędnych o podany kąt w stopniach.',
-            snippet: 'screen.setRotation(${1:0})'
-        },
-        {
-            label: 'screen.width',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'screen.width',
-            doc: 'Szerokość ekranu gry w pikselach wirtualnych.'
-        },
-        {
-            label: 'screen.height',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'screen.height',
-            doc: 'Wysokość ekranu gry w pikselach wirtualnych.'
-        },
-
-        // keyboard
-        {
-            label: 'keyboard.UP',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.UP',
-            doc: 'Czy strzałka w górę jest wciśnięta (1 lub 0).'
-        },
-        {
-            label: 'keyboard.DOWN',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.DOWN',
-            doc: 'Czy strzałka w dół jest wciśnięta (1 lub 0).'
-        },
-        {
-            label: 'keyboard.LEFT',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.LEFT',
-            doc: 'Czy strzałka w lewo jest wciśnięta (1 lub 0).'
-        },
-        {
-            label: 'keyboard.RIGHT',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.RIGHT',
-            doc: 'Czy strzałka w prawo jest wciśnięta (1 lub 0).'
-        },
-        {
-            label: 'keyboard.SPACE',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.SPACE',
-            doc: 'Czy spacja jest wciśnięta (1 lub 0).'
-        },
-        {
-            label: 'keyboard.ENTER',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.ENTER',
-            doc: 'Czy klawisz Enter jest wciśnięty.'
-        },
-        {
-            label: 'keyboard.A',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.A',
-            doc: 'Stan klawisza A.'
-        },
-        {
-            label: 'keyboard.W',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.W',
-            doc: 'Stan klawisza W.'
-        },
-        {
-            label: 'keyboard.S',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.S',
-            doc: 'Stan klawisza S.'
-        },
-        {
-            label: 'keyboard.D',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'keyboard.D',
-            doc: 'Stan klawisza D.'
-        },
-
-        // mouse & touch
-        {
-            label: 'mouse.x',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'mouse.x',
-            doc: 'Współrzędna X kursora myszy na ekranie gry.'
-        },
-        {
-            label: 'mouse.y',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'mouse.y',
-            doc: 'Współrzędna Y kursora myszy na ekranie gry.'
-        },
-        {
-            label: 'mouse.pressed',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'mouse.pressed',
-            doc: 'Czy lewy przycisk myszy jest wciśnięty (1 lub 0).'
-        },
-        {
-            label: 'mouse.right',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'mouse.right',
-            doc: 'Czy prawy przycisk myszy jest wciśnięty.'
-        },
-        {
-            label: 'touch.touching',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'touch.touching',
-            doc: 'Czy ekran dotykowy jest aktualnie dotykany.'
-        },
-        {
-            label: 'touch.touches',
-            kind: vscode.CompletionItemKind.Property,
-            detail: 'touch.touches',
-            doc: 'Tablica aktywnych punktów dotyku [{x, y, id}, ...].'
-        },
-
-        // audio
-        {
-            label: 'audio.beep',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'audio.beep(synthString)',
-            doc: 'Odtwarza dźwięk syntezatora microStudio.',
-            snippet: 'audio.beep("${1:square;c4;8}")'
-        },
-        {
-            label: 'audio.playSound',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'audio.playSound(name, volume, pitch, pan, loop)',
-            doc: 'Odtwarza plik dźwiękowy z folderu sounds/.',
-            snippet: 'audio.playSound("${1:sound_name}", ${2:1.0})'
-        },
-        {
-            label: 'audio.playMusic',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'audio.playMusic(name, volume, loop)',
-            doc: 'Odtwarza utwór muzyczny z folderu music/.',
-            snippet: 'audio.playMusic("${1:music_name}", ${2:1.0}, ${3:true})'
-        },
-        {
-            label: 'audio.stopMusic',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'audio.stopMusic()',
-            doc: 'Zatrzymuje aktualnie odtwarzaną muzykę.'
-        },
-
-        // system & random
-        {
-            label: 'system.time',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'system.time()',
-            doc: 'Zwraca aktualny czas w milisekundach.'
-        },
-        {
-            label: 'system.pause',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'system.pause()',
-            doc: 'Wstrzymuje wykonywanie gry.'
-        },
-        {
-            label: 'random.next',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'random.next()',
-            doc: 'Losuje liczbę zmiennoprzecinkową od 0.0 do 1.0.'
-        },
-        {
-            label: 'random.nextInt',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'random.nextInt(max)',
-            doc: 'Losuje liczbę całkowitą od 0 do max - 1.',
-            snippet: 'random.nextInt(${1:10})'
-        },
-
-        // PIXI (PixiJS 2D Engine)
-        {
-            label: 'PIXI.Application',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new PIXI.Application(options)',
-            doc: 'Główna aplikacja PixiJS do renderowania 2D WebGL.',
-            snippet: 'new PIXI.Application({ width: ${1:800}, height: ${2:600} })'
-        },
-        {
-            label: 'PIXI.Sprite',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new PIXI.Sprite(texture)',
-            doc: 'Obiekt Sprite w PixiJS.',
-            snippet: 'new PIXI.Sprite(${1:texture})'
-        },
-        {
-            label: 'PIXI.Container',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new PIXI.Container()',
-            doc: 'Kontener na obiekty graficzne w drzewie sceny PixiJS.'
-        },
-        {
-            label: 'PIXI.Graphics',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new PIXI.Graphics()',
-            doc: 'Kształty wektorowe w PixiJS.'
-        },
-
-        // BABYLON (Babylon.js 3D Engine)
-        {
-            label: 'BABYLON.Engine',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new BABYLON.Engine(canvas, antialias)',
-            doc: 'Główny silnik WebGL dla Babylon.js 3D.'
-        },
-        {
-            label: 'BABYLON.Scene',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new BABYLON.Scene(engine)',
-            doc: 'Scena 3D w Babylon.js.',
-            snippet: 'new BABYLON.Scene(${1:engine})'
-        },
-        {
-            label: 'BABYLON.Vector3',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new BABYLON.Vector3(x, y, z)',
-            doc: 'Wektor 3D w przestrzeni (x, y, z).',
-            snippet: 'new BABYLON.Vector3(${1:0}, ${2:0}, ${3:0})'
-        },
-        {
-            label: 'BABYLON.MeshBuilder.CreateBox',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'BABYLON.MeshBuilder.CreateBox(name, options, scene)',
-            doc: 'Tworzy sześcian 3D.',
-            snippet: 'BABYLON.MeshBuilder.CreateBox("${1:box}", { size: ${2:1} }, ${3:scene})'
-        },
-        {
-            label: 'BABYLON.MeshBuilder.CreateSphere',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'BABYLON.MeshBuilder.CreateSphere(name, options, scene)',
-            doc: 'Tworzy kulę 3D.',
-            snippet: 'BABYLON.MeshBuilder.CreateSphere("${1:sphere}", { diameter: ${2:1} }, ${3:scene})'
-        },
-
-        // M2D / M3D
-        {
-            label: 'M2D.Scene',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new M2D.Scene()',
-            doc: 'Scena 2D w silniku micro2D.'
-        },
-        {
-            label: 'M2D.Camera',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new M2D.Camera(fov, x, y)',
-            doc: 'Kamera 2D w silniku micro2D.'
-        },
-        {
-            label: 'M3D.Scene',
-            kind: vscode.CompletionItemKind.Class,
-            detail: 'new M3D.Scene()',
-            doc: 'Scena 3D w silniku micro3D.'
-        },
-
-        // Matter.js 2D Physics
-        {
-            label: 'Matter.Engine.create',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'Matter.Engine.create()',
-            doc: 'Tworzy silnik fizyki 2D Matter.js.'
-        },
-        {
-            label: 'Matter.Bodies.rectangle',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'Matter.Bodies.rectangle(x, y, width, height, options)',
-            doc: 'Tworzy prostokątne ciało fizyczne.',
-            snippet: 'Matter.Bodies.rectangle(${1:x}, ${2:y}, ${3:width}, ${4:height}, ${5:{ isStatic: false }})'
-        },
-        {
-            label: 'Matter.Bodies.circle',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'Matter.Bodies.circle(x, y, radius, options)',
-            doc: 'Tworzy okrągłe ciało fizyczne.',
-            snippet: 'Matter.Bodies.circle(${1:x}, ${2:y}, ${3:radius}, ${4:{}})'
-        },
-        {
-            label: 'Matter.Composite.add',
-            kind: vscode.CompletionItemKind.Method,
-            detail: 'Matter.Composite.add(world, body)',
-            doc: 'Dodaje ciało do świata fizyki.',
-            snippet: 'Matter.Composite.add(${1:engine.world}, ${2:body})'
-        }
-    ];
-
-    private findProjectRoot(docUri: vscode.Uri): string | null {
-        let current = path.dirname(docUri.fsPath);
-        for (let i = 0; i < 5; i++) {
-            if (fs.existsSync(path.join(current, 'project.json'))) {
+    /**
+     * Finds the root of the microStudio project for a given document URI
+     */
+    private findProjectRoot(uri: vscode.Uri): string | null {
+        let current = path.dirname(uri.fsPath);
+        for (let i = 0; i < 6; i++) {
+            const pj = path.join(current, 'project.json');
+            if (fs.existsSync(pj)) {
                 return current;
             }
             const parent = path.dirname(current);
@@ -437,9 +27,189 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
         return null;
     }
 
+    /**
+     * Reads active libraries list from project.json
+     */
+    private getProjectActiveLibraries(projectRoot: string | null): string[] {
+        if (!projectRoot) return [];
+        const pjPath = path.join(projectRoot, 'project.json');
+        if (fs.existsSync(pjPath)) {
+            try {
+                const data = JSON.parse(fs.readFileSync(pjPath, 'utf8'));
+                if (Array.isArray(data.libs)) {
+                    return data.libs;
+                }
+            } catch (e) {}
+        }
+        return [];
+    }
+
+    /**
+     * Scans project files (.ms, .js, .py) and doc/*.md to extract custom and library functions/classes/docstrings
+     */
+    private scanProjectSymbols(projectRoot: string | null): ApiDocItem[] {
+        if (!projectRoot) return [];
+
+        const cached = MicroScriptCompletionProvider.cachedProjectSymbols.get(projectRoot);
+        const now = Date.now();
+        // Cache for 3 seconds to ensure high performance while editing
+        if (cached && (now - cached.time < 3000)) {
+            return cached.symbols;
+        }
+
+        const symbols: ApiDocItem[] = [];
+        const scanDirs = [
+            path.join(projectRoot, 'ms'),
+            path.join(projectRoot, 'libs'),
+            path.join(projectRoot, 'lib')
+        ];
+
+        for (const dir of scanDirs) {
+            if (!fs.existsSync(dir)) continue;
+            const files = this.scanDirectoryFiles(dir, dir);
+            for (const file of files) {
+                if (file.endsWith('.ms') || file.endsWith('.js')) {
+                    const fullPath = path.join(dir, file);
+                    try {
+                        const content = fs.readFileSync(fullPath, 'utf8');
+                        this.extractSymbolsFromCode(content, file, symbols);
+                    } catch (e) {}
+                }
+            }
+        }
+
+        // Also scan doc/*.md files for library documentation
+        const docDir = path.join(projectRoot, 'doc');
+        if (fs.existsSync(docDir)) {
+            const docFiles = this.scanDirectoryFiles(docDir, docDir);
+            for (const docFile of docFiles) {
+                if (docFile.endsWith('.md')) {
+                    const fullDocPath = path.join(docDir, docFile);
+                    try {
+                        const docContent = fs.readFileSync(fullDocPath, 'utf8');
+                        const docTitle = path.basename(docFile, '.md');
+                        symbols.push({
+                            label: `doc:${docTitle}`,
+                            kind: vscode.CompletionItemKind.Reference,
+                            detail: `Dokumentacja: doc/${docFile}`,
+                            doc: `📖 **Dokumentacja projektu / biblioteki**: \`${docTitle}\`\n\n${docContent.slice(0, 1000)}${docContent.length > 1000 ? '\n\n*(skrócono...)*' : ''}`,
+                            category: 'library'
+                        });
+                    } catch (e) {}
+                }
+            }
+        }
+
+        MicroScriptCompletionProvider.cachedProjectSymbols.set(projectRoot, { time: now, symbols });
+        return symbols;
+    }
+
+    /**
+     * Parses source code lines and extracts functions, classes, arguments, and doc comments
+     */
+    private extractSymbolsFromCode(content: string, filePath: string, outSymbols: ApiDocItem[]) {
+        const lines = content.split('\n');
+        let pendingComment: string[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // Comment lines
+            if (line.startsWith('#') || line.startsWith('//') || line.startsWith('--')) {
+                const clean = line.replace(/^(#|\/\/|--)\s*/, '');
+                pendingComment.push(clean);
+                continue;
+            }
+
+            if (line === '') {
+                // Keep comments across single empty lines, reset on double
+                if (pendingComment.length > 0 && i + 1 < lines.length && lines[i + 1].trim() === '') {
+                    pendingComment = [];
+                }
+                continue;
+            }
+
+            // Pattern 1: name = function(arg1, arg2, arg3)
+            const fnAssignMatch = line.match(/^([a-zA-Z0-9_.]+)\s*=\s*function\s*\(([^)]*)\)/);
+            if (fnAssignMatch) {
+                const name = fnAssignMatch[1];
+                const rawArgs = fnAssignMatch[2].trim();
+                const argsList = rawArgs ? rawArgs.split(',').map(a => a.trim().split('=')[0].trim()) : [];
+                
+                const commentText = pendingComment.join('\n');
+                const docText = commentText 
+                    ? `📘 **Funkcja z pliku \`${filePath}\`**\n\n${commentText}`
+                    : `📘 **Funkcja zdefiniowana w \`${filePath}\`**`;
+
+                outSymbols.push({
+                    label: name,
+                    kind: vscode.CompletionItemKind.Function,
+                    detail: `${name}(${rawArgs})`,
+                    doc: docText,
+                    parameters: argsList.map(a => ({ name: a, doc: `Parametr \`${a}\`` })),
+                    snippet: `${name}(${argsList.map((a, idx) => `\${${idx + 1}:${a}}`).join(', ')})`,
+                    category: 'library'
+                });
+
+                pendingComment = [];
+                continue;
+            }
+
+            // Pattern 2: function name(arg1, arg2)
+            const fnDefMatch = line.match(/^function\s+([a-zA-Z0-9_.]+)\s*\(([^)]*)\)/);
+            if (fnDefMatch) {
+                const name = fnDefMatch[1];
+                const rawArgs = fnDefMatch[2].trim();
+                const argsList = rawArgs ? rawArgs.split(',').map(a => a.trim().split('=')[0].trim()) : [];
+                
+                const commentText = pendingComment.join('\n');
+                const docText = commentText 
+                    ? `📘 **Funkcja z pliku \`${filePath}\`**\n\n${commentText}`
+                    : `📘 **Funkcja zdefiniowana w \`${filePath}\`**`;
+
+                outSymbols.push({
+                    label: name,
+                    kind: vscode.CompletionItemKind.Function,
+                    detail: `${name}(${rawArgs})`,
+                    doc: docText,
+                    parameters: argsList.map(a => ({ name: a, doc: `Parametr \`${a}\`` })),
+                    snippet: `${name}(${argsList.map((a, idx) => `\${${idx + 1}:${a}}`).join(', ')})`,
+                    category: 'library'
+                });
+
+                pendingComment = [];
+                continue;
+            }
+
+            // Pattern 3: Class declaration: Name = class or class Name
+            const classMatch = line.match(/^([a-zA-Z0-9_]+)\s*=\s*class\b/) || line.match(/^class\s+([a-zA-Z0-9_]+)\b/);
+            if (classMatch) {
+                const className = classMatch[1];
+                const commentText = pendingComment.join('\n');
+                const docText = commentText 
+                    ? `🏛️ **Klasa z pliku \`${filePath}\`**\n\n${commentText}`
+                    : `🏛️ **Klasa zdefiniowana w \`${filePath}\`**`;
+
+                outSymbols.push({
+                    label: className,
+                    kind: vscode.CompletionItemKind.Class,
+                    detail: `class ${className}`,
+                    doc: docText,
+                    category: 'library'
+                });
+
+                pendingComment = [];
+                continue;
+            }
+
+            // Reset comments if line was code but not a declaration
+            pendingComment = [];
+        }
+    }
+
     private scanDirectoryFiles(dir: string, baseDir: string): string[] {
-        if (!fs.existsSync(dir)) return [];
         let results: string[] = [];
+        if (!fs.existsSync(dir)) return results;
         try {
             const list = fs.readdirSync(dir, { withFileTypes: true });
             for (const item of list) {
@@ -455,30 +225,62 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
         return results;
     }
 
+    /**
+     * Returns all active API items (Built-in, Active Libraries, and Workspace Project Symbols)
+     */
+    private getAllActiveApiItems(projectRoot: string | null): ApiDocItem[] {
+        const activeLibIds = this.getProjectActiveLibraries(projectRoot);
+        const projectSymbols = this.scanProjectSymbols(projectRoot);
+
+        // Filter standard libraries: show all if no project.json or if included in libs
+        const libraryItems = LIBRARIES_API_DATABASE.filter(item => {
+            if (!item.libraryId) return true;
+            // If the project specifies libs, prioritize those, but keep generic utility libraries discoverable
+            return activeLibIds.length === 0 || activeLibIds.includes(item.libraryId);
+        });
+
+        return [...BUILTIN_API_DATABASE, ...libraryItems, ...projectSymbols];
+    }
+
+    /**
+     * 1. COMPLETION ITEM PROVIDER (IntelliSense Auto-Complete)
+     */
     provideCompletionItems(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken,
         context: vscode.CompletionContext
     ): vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList> {
-        const lineText = document.lineAt(position).text;
-        const linePrefix = lineText.substr(0, position.character);
+        const projectRoot = this.findProjectRoot(document.uri);
+        const allItems = this.getAllActiveApiItems(projectRoot);
+        const completions: vscode.CompletionItem[] = [];
 
-        // Standard API completions
-        const completions: vscode.CompletionItem[] = this.items.map(item => {
+        // 1. API & Library & Function Completions
+        for (const item of allItems) {
             const ci = new vscode.CompletionItem(item.label, item.kind);
             ci.detail = item.detail;
-            ci.documentation = new vscode.MarkdownString(item.doc);
+            
+            const md = new vscode.MarkdownString(item.doc);
+            if (item.parameters && item.parameters.length > 0) {
+                md.appendMarkdown('\n\n**Parametry:**\n');
+                for (const param of item.parameters) {
+                    md.appendMarkdown(`- \`${param.name}\`${param.type ? ` *(${param.type})*` : ''}: ${param.doc}\n`);
+                }
+            }
+            if (item.example) {
+                md.appendMarkdown(`\n\n**Przykład:**\n\`\`\`microscript\n${item.example}\n\`\`\``);
+            }
+            ci.documentation = md;
+
             if (item.snippet) {
                 ci.insertText = new vscode.SnippetString(item.snippet);
             }
-            return ci;
-        });
+            completions.push(ci);
+        }
 
-        // Dynamic Project Asset Completions
-        const projectRoot = this.findProjectRoot(document.uri);
+        // 2. Dynamic Project Asset Completions (Sprites, Maps, Sounds, Music, Assets)
         if (projectRoot) {
-            // 1. Sprites
+            // Sprites
             const spritesDir = path.join(projectRoot, 'sprites');
             const spriteFiles = this.scanDirectoryFiles(spritesDir, spritesDir);
             for (const file of spriteFiles) {
@@ -486,14 +288,14 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
                     const name = file.slice(0, -4);
                     const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Color);
                     ci.detail = `Sprite: sprites/${file}`;
-                    ci.documentation = new vscode.MarkdownString(`🖼️ **Sprite**: \`"${name}"\`\n\nŚcieżka: \`sprites/${file}\``);
+                    ci.documentation = new vscode.MarkdownString(`🖼️ **microStudio Sprite**: \`"${name}"\`\n\n- Ścieżka: \`sprites/${file}\``);
                     ci.insertText = `"${name}"`;
                     ci.sortText = `0_sprite_${name}`;
                     completions.push(ci);
                 }
             }
 
-            // 2. Maps
+            // Maps
             const mapsDir = path.join(projectRoot, 'maps');
             const mapFiles = this.scanDirectoryFiles(mapsDir, mapsDir);
             for (const file of mapFiles) {
@@ -501,46 +303,46 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
                     const name = file.slice(0, -5);
                     const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.File);
                     ci.detail = `Map: maps/${file}`;
-                    ci.documentation = new vscode.MarkdownString(`🗺️ **Map**: \`"${name}"\`\n\nŚcieżka: \`maps/${file}\``);
+                    ci.documentation = new vscode.MarkdownString(`🗺️ **microStudio Map**: \`"${name}"\`\n\n- Ścieżka: \`maps/${file}\``);
                     ci.insertText = `"${name}"`;
                     ci.sortText = `0_map_${name}`;
                     completions.push(ci);
                 }
             }
 
-            // 3. Sounds
+            // Sounds
             const soundsDir = path.join(projectRoot, 'sounds');
             const soundFiles = this.scanDirectoryFiles(soundsDir, soundsDir);
             for (const file of soundFiles) {
                 const name = file.replace(/\.[^/.]+$/, '');
                 const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Value);
                 ci.detail = `Sound: sounds/${file}`;
-                ci.documentation = new vscode.MarkdownString(`🔊 **Sound**: \`"${name}"\`\n\nŚcieżka: \`sounds/${file}\``);
+                ci.documentation = new vscode.MarkdownString(`🔊 **microStudio Sound**: \`"${name}"\`\n\n- Ścieżka: \`sounds/${file}\``);
                 ci.insertText = `"${name}"`;
                 ci.sortText = `0_sound_${name}`;
                 completions.push(ci);
             }
 
-            // 4. Music
+            // Music
             const musicDir = path.join(projectRoot, 'music');
             const musicFiles = this.scanDirectoryFiles(musicDir, musicDir);
             for (const file of musicFiles) {
                 const name = file.replace(/\.[^/.]+$/, '');
                 const ci = new vscode.CompletionItem(`"${name}"`, vscode.CompletionItemKind.Value);
                 ci.detail = `Music: music/${file}`;
-                ci.documentation = new vscode.MarkdownString(`🎵 **Music**: \`"${name}"\`\n\nŚcieżka: \`music/${file}\``);
+                ci.documentation = new vscode.MarkdownString(`🎵 **microStudio Music**: \`"${name}"\`\n\n- Ścieżka: \`music/${file}\``);
                 ci.insertText = `"${name}"`;
                 ci.sortText = `0_music_${name}`;
                 completions.push(ci);
             }
 
-            // 5. Assets
+            // Assets
             const assetsDir = path.join(projectRoot, 'assets');
             const assetFiles = this.scanDirectoryFiles(assetsDir, assetsDir);
             for (const file of assetFiles) {
                 const ci = new vscode.CompletionItem(`"${file}"`, vscode.CompletionItemKind.File);
                 ci.detail = `Asset: assets/${file}`;
-                ci.documentation = new vscode.MarkdownString(`📁 **Asset**: \`"${file}"\`\n\nŚcieżka: \`assets/${file}\``);
+                ci.documentation = new vscode.MarkdownString(`📁 **microStudio Asset**: \`"${file}"\`\n\n- Ścieżka: \`assets/${file}\``);
                 ci.insertText = `"${file}"`;
                 ci.sortText = `0_asset_${file}`;
                 completions.push(ci);
@@ -550,42 +352,39 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
         return completions;
     }
 
+    /**
+     * 2. HOVER PROVIDER (Tooltips on hover)
+     */
     provideHover(
         document: vscode.TextDocument,
         position: vscode.Position,
         token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Hover> {
-        const line = document.lineAt(position).text;
-        
-        // Check for quoted strings first (potential asset references)
+        // Check for quoted strings (asset hover preview)
         const stringRange = document.getWordRangeAtPosition(position, /["'][^"']+["']/);
         if (stringRange) {
             const raw = document.getText(stringRange);
             const assetName = raw.slice(1, -1);
             const projectRoot = this.findProjectRoot(document.uri);
             if (projectRoot && assetName) {
-                // Check if sprite exists
                 const spritePath = path.join(projectRoot, 'sprites', `${assetName}.png`);
                 if (fs.existsSync(spritePath)) {
                     const md = new vscode.MarkdownString(`🖼️ **microStudio Sprite**: \`${assetName}\`\n\n- Plik: [sprites/${assetName}.png](${vscode.Uri.file(spritePath)})\n- Format: PNG`);
                     return new vscode.Hover(md, stringRange);
                 }
 
-                // Check if map exists
                 const mapPath = path.join(projectRoot, 'maps', `${assetName}.json`);
                 if (fs.existsSync(mapPath)) {
                     const md = new vscode.MarkdownString(`🗺️ **microStudio Map**: \`${assetName}\`\n\n- Plik: [maps/${assetName}.json](${vscode.Uri.file(mapPath)})\n- Format: JSON Grid Map`);
                     return new vscode.Hover(md, stringRange);
                 }
 
-                // Check if sound exists
                 const soundPath = path.join(projectRoot, 'sounds', `${assetName}.wav`);
                 if (fs.existsSync(soundPath) || fs.existsSync(path.join(projectRoot, 'sounds', `${assetName}.json`))) {
                     const md = new vscode.MarkdownString(`🔊 **microStudio Sound**: \`${assetName}\``);
                     return new vscode.Hover(md, stringRange);
                 }
 
-                // Check if music exists
                 const musicPath = path.join(projectRoot, 'music', `${assetName}.mp3`);
                 if (fs.existsSync(musicPath) || fs.existsSync(path.join(projectRoot, 'music', `${assetName}.json`))) {
                     const md = new vscode.MarkdownString(`🎵 **microStudio Music**: \`${assetName}\``);
@@ -594,18 +393,100 @@ export class MicroScriptCompletionProvider implements vscode.CompletionItemProvi
             }
         }
 
+        // Check for identifier or method call (e.g. screen.drawSprite, M2D.createWorld, myFunc)
         const range = document.getWordRangeAtPosition(position, /[\w\.]+/);
         if (!range) return null;
 
         const word = document.getText(range);
-        const match = this.items.find(i => i.label === word || i.label.split('.').pop() === word);
+        const projectRoot = this.findProjectRoot(document.uri);
+        const allItems = this.getAllActiveApiItems(projectRoot);
+
+        // Find exact match or suffix match (e.g. drawSprite matching screen.drawSprite)
+        const match = allItems.find(i => i.label === word || i.label.split('.').pop() === word);
         if (match) {
             const md = new vscode.MarkdownString();
             md.appendCodeblock(match.detail, 'microscript');
             md.appendMarkdown('\n\n' + match.doc);
+
+            if (match.parameters && match.parameters.length > 0) {
+                md.appendMarkdown('\n\n**Parametry:**\n');
+                for (const param of match.parameters) {
+                    md.appendMarkdown(`- \`${param.name}\`${param.type ? ` *(${param.type})*` : ''}: ${param.doc}\n`);
+                }
+            }
+            if (match.returns) {
+                md.appendMarkdown(`\n\n**Zwraca:** ${match.returns}`);
+            }
+            if (match.example) {
+                md.appendMarkdown(`\n\n**Przykład:**\n\`\`\`microscript\n${match.example}\n\`\`\``);
+            }
             return new vscode.Hover(md, range);
         }
 
         return null;
+    }
+
+    /**
+     * 3. SIGNATURE HELP PROVIDER (Parameter Hints in Parentheses)
+     */
+    provideSignatureHelp(
+        document: vscode.TextDocument,
+        position: vscode.Position,
+        token: vscode.CancellationToken,
+        context: vscode.SignatureHelpContext
+    ): vscode.ProviderResult<vscode.SignatureHelp> {
+        const lineText = document.lineAt(position.line).text;
+        const textBeforeCursor = lineText.substring(0, position.character);
+
+        // Find open parenthesis and identify the preceding function call
+        let openParenIndex = -1;
+        let parenDepth = 0;
+        let commaCount = 0;
+
+        for (let i = textBeforeCursor.length - 1; i >= 0; i--) {
+            const char = textBeforeCursor[i];
+            if (char === ')') {
+                parenDepth++;
+            } else if (char === '(') {
+                if (parenDepth > 0) {
+                    parenDepth--;
+                } else {
+                    openParenIndex = i;
+                    break;
+                }
+            } else if (char === ',' && parenDepth === 0) {
+                commaCount++;
+            }
+        }
+
+        if (openParenIndex === -1) return null;
+
+        // Extract the function call expression preceding the '('
+        const beforeParen = textBeforeCursor.substring(0, openParenIndex).trim();
+        const fnMatch = beforeParen.match(/([a-zA-Z0-9_.]+)$/);
+        if (!fnMatch) return null;
+
+        const fnName = fnMatch[1];
+        const projectRoot = this.findProjectRoot(document.uri);
+        const allItems = this.getAllActiveApiItems(projectRoot);
+
+        const match = allItems.find(i => i.label === fnName || i.label.split('.').pop() === fnName);
+        if (!match || !match.parameters || match.parameters.length === 0) return null;
+
+        const sigHelp = new vscode.SignatureHelp();
+        const sigInfo = new vscode.SignatureInformation(match.detail, new vscode.MarkdownString(match.doc));
+
+        sigInfo.parameters = match.parameters.map(p => {
+            return new vscode.ParameterInformation(
+                p.name,
+                new vscode.MarkdownString(`**\`${p.name}\`**${p.type ? ` *(${p.type})*` : ''}: ${p.doc}`)
+            );
+        });
+
+        sigHelp.signatures = [sigInfo];
+        sigHelp.activeSignature = 0;
+        sigHelp.activeParameter = Math.min(commaCount, match.parameters.length - 1);
+
+        return sigHelp;
     }
 }

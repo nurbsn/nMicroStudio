@@ -24,13 +24,16 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(SpriteEditorProvider.register(context));
     context.subscriptions.push(MapEditorProvider.register(context));
 
-    // Register MicroScript IntelliSense / Completion & Hover Provider
+    // Register MicroScript IntelliSense / Completion, Hover & Signature Help Provider
     const completionProvider = new MicroScriptCompletionProvider();
     context.subscriptions.push(
-        vscode.languages.registerCompletionItemProvider('microscript', completionProvider, '.')
+        vscode.languages.registerCompletionItemProvider('microscript', completionProvider, '.', '"', '/')
     );
     context.subscriptions.push(
         vscode.languages.registerHoverProvider('microscript', completionProvider)
+    );
+    context.subscriptions.push(
+        vscode.languages.registerSignatureHelpProvider('microscript', completionProvider, '(', ',')
     );
 
     // Register Preview command
