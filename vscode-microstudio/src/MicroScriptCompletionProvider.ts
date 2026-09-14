@@ -235,11 +235,88 @@ export class MicroScriptCompletionProvider implements
         // Filter standard libraries: show all if no project.json or if included in libs
         const libraryItems = LIBRARIES_API_DATABASE.filter(item => {
             if (!item.libraryId) return true;
-            // If the project specifies libs, prioritize those, but keep generic utility libraries discoverable
             return activeLibIds.length === 0 || activeLibIds.includes(item.libraryId);
         });
 
         return [...BUILTIN_API_DATABASE, ...libraryItems, ...projectSymbols];
+    }
+
+    /**
+     * Parses the current line and surrounding context to find function calls and active parameter index
+     */
+    private parseEnclosingFunctionCall(lineText: string, charOffset: number): { functionName: string; activeParameterIndex: number; callStart: number } | null {
+        const textBefore = lineText.substring(0, charOffset);
+        
+        let parenDepth = 0;
+        let openParenIndex = -1;
+        let inString: string | null = null;
+        let commaCount = 0;
+
+        // Traverse backwards from charOffset to find the matching open paren
+        for (let i = textBefore.length - 1; i >= 0; i--) {
+            const char = textBefore[i];
+            
+            // Check quotes (ignoring escaped ones)
+            if ((char === '"' || char === "'") && (i === 0 || textBefore[i - 1] !== '\\')) {
+                if (inString === char) {
+                    inString = null;
+                } else if (!inString) {
+                    inString = char;
+                }
+            }
+
+            if (inString) continue;
+
+            if (char === ')') {
+                parenDepth++;
+            } else if (char === '(') {
+                if (parenDepth > 0) {
+                    parenDepth--;
+                } else {
+                    openParenIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (openParenIndex === -1) return null;
+
+        // Extract function name preceding '('
+        const beforeParen = textBefore.substring(0, openParenIndex).trim();
+        const fnMatch = beforeParen.match(/([a-zA-Z0-9_.]+)$/);
+        if (!fnMatch) return null;
+
+        const functionName = fnMatch[1];
+        const callStart = openParenIndex - fnMatch[1].length;
+
+        // Count commas between openParenIndex and charOffset at depth 0
+        inString = null;
+        let depth = 0;
+        for (let i = openParenIndex + 1; i < charOffset; i++) {
+            const char = lineText[i];
+            if ((char === '"' || char === "'") && (i === 0 || lineText[i - 1] !== '\\')) {
+                if (inString === char) {
+                    inString = null;
+                } else if (!inString) {
+                    inString = char;
+                }
+            }
+            if (inString) continue;
+
+            if (char === '(' || char === '{' || char === '[') {
+                depth++;
+            } else if (char === ')' || char === '}' || char === ']') {
+                if (depth > 0) depth--;
+            } else if (char === ',' && depth === 0) {
+                commaCount++;
+            }
+        }
+
+        return {
+            functionName,
+            activeParameterIndex: commaCount,
+            callStart
+        };
     }
 
     /**
@@ -360,12 +437,15 @@ export class MicroScriptCompletionProvider implements
         position: vscode.Position,
         token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.Hover> {
-        // Check for quoted strings (asset hover preview)
-        const stringRange = document.getWordRangeAtPosition(position, /["'][^"']+["']/);
+        const lineText = document.lineAt(position.line).text;
+        const projectRoot = this.findProjectRoot(document.uri);
+        const allItems = this.getAllActiveApiItems(projectRoot);
+
+        // 1. Check for quoted string (Sprite/Map/Sound hover)
+        const stringRange = document.getWordRangeAtPosition(position, /["'][^"']*["']/);
         if (stringRange) {
             const raw = document.getText(stringRange);
             const assetName = raw.slice(1, -1);
-            const projectRoot = this.findProjectRoot(document.uri);
             if (projectRoot && assetName) {
                 const spritePath = path.join(projectRoot, 'sprites', `${assetName}.png`);
                 if (fs.existsSync(spritePath)) {
@@ -393,37 +473,69 @@ export class MicroScriptCompletionProvider implements
             }
         }
 
-        // Check for identifier or method call (e.g. screen.drawSprite, M2D.createWorld, myFunc)
-        const range = document.getWordRangeAtPosition(position, /[\w\.]+/);
-        if (!range) return null;
+        // 2. Check for direct word / method identifier under cursor (e.g. screen.drawSprite, screen, drawSprite)
+        const wordRange = document.getWordRangeAtPosition(position, /[a-zA-Z0-9_.]+/);
+        if (wordRange) {
+            const word = document.getText(wordRange);
+            const match = allItems.find(i => i.label === word || i.label.split('.').pop() === word || i.label.startsWith(word + '.'));
+            if (match) {
+                return this.buildHoverForMatch(match, wordRange);
+            }
+        }
 
-        const word = document.getText(range);
-        const projectRoot = this.findProjectRoot(document.uri);
-        const allItems = this.getAllActiveApiItems(projectRoot);
+        // 3. Check if cursor/hover is anywhere inside an enclosing function call (e.g. inside screen.drawSprite("", m5x, m5y...))
+        const callInfo = this.parseEnclosingFunctionCall(lineText, position.character);
+        if (callInfo) {
+            const fnMatch = allItems.find(i => i.label === callInfo.functionName || i.label.split('.').pop() === callInfo.functionName);
+            if (fnMatch) {
+                const md = new vscode.MarkdownString();
+                md.appendCodeblock(fnMatch.detail, 'microscript');
+                md.appendMarkdown('\n\n' + fnMatch.doc);
 
-        // Find exact match or suffix match (e.g. drawSprite matching screen.drawSprite)
-        const match = allItems.find(i => i.label === word || i.label.split('.').pop() === word);
-        if (match) {
-            const md = new vscode.MarkdownString();
-            md.appendCodeblock(match.detail, 'microscript');
-            md.appendMarkdown('\n\n' + match.doc);
+                if (fnMatch.parameters && fnMatch.parameters.length > 0) {
+                    const activeParam = fnMatch.parameters[callInfo.activeParameterIndex];
+                    if (activeParam) {
+                        md.appendMarkdown(`\n\n👉 **Aktywny parametr:** \`${activeParam.name}\`${activeParam.type ? ` *(${activeParam.type})*` : ''}: ${activeParam.doc}\n`);
+                    }
 
-            if (match.parameters && match.parameters.length > 0) {
-                md.appendMarkdown('\n\n**Parametry:**\n');
-                for (const param of match.parameters) {
-                    md.appendMarkdown(`- \`${param.name}\`${param.type ? ` *(${param.type})*` : ''}: ${param.doc}\n`);
+                    md.appendMarkdown('\n\n**Wszystkie parametry:**\n');
+                    fnMatch.parameters.forEach((param, idx) => {
+                        const isCurrent = idx === callInfo.activeParameterIndex;
+                        const prefix = isCurrent ? '👉 **' : '- `';
+                        const suffix = isCurrent ? '** 👈' : '`';
+                        md.appendMarkdown(`${prefix}${param.name}${param.type ? ` (${param.type})` : ''}: ${param.doc}${suffix}\n`);
+                    });
                 }
+
+                if (fnMatch.example) {
+                    md.appendMarkdown(`\n\n**Przykład:**\n\`\`\`microscript\n${fnMatch.example}\n\`\`\``);
+                }
+
+                return new vscode.Hover(md);
             }
-            if (match.returns) {
-                md.appendMarkdown(`\n\n**Zwraca:** ${match.returns}`);
-            }
-            if (match.example) {
-                md.appendMarkdown(`\n\n**Przykład:**\n\`\`\`microscript\n${match.example}\n\`\`\``);
-            }
-            return new vscode.Hover(md, range);
         }
 
         return null;
+    }
+
+    private buildHoverForMatch(match: ApiDocItem, range: vscode.Range): vscode.Hover {
+        const md = new vscode.MarkdownString();
+        md.appendCodeblock(match.detail, 'microscript');
+        md.appendMarkdown('\n\n' + match.doc);
+
+        if (match.parameters && match.parameters.length > 0) {
+            md.appendMarkdown('\n\n**Parametry:**\n');
+            for (const param of match.parameters) {
+                md.appendMarkdown(`- \`${param.name}\`${param.type ? ` *(${param.type})*` : ''}: ${param.doc}\n`);
+            }
+        }
+        if (match.returns) {
+            md.appendMarkdown(`\n\n**Zwraca:** ${match.returns}`);
+        }
+        if (match.example) {
+            md.appendMarkdown(`\n\n**Przykład:**\n\`\`\`microscript\n${match.example}\n\`\`\``);
+        }
+        return new vscode.Hover(md, range);
     }
 
     /**
@@ -436,41 +548,13 @@ export class MicroScriptCompletionProvider implements
         context: vscode.SignatureHelpContext
     ): vscode.ProviderResult<vscode.SignatureHelp> {
         const lineText = document.lineAt(position.line).text;
-        const textBeforeCursor = lineText.substring(0, position.character);
+        const callInfo = this.parseEnclosingFunctionCall(lineText, position.character);
+        if (!callInfo) return null;
 
-        // Find open parenthesis and identify the preceding function call
-        let openParenIndex = -1;
-        let parenDepth = 0;
-        let commaCount = 0;
-
-        for (let i = textBeforeCursor.length - 1; i >= 0; i--) {
-            const char = textBeforeCursor[i];
-            if (char === ')') {
-                parenDepth++;
-            } else if (char === '(') {
-                if (parenDepth > 0) {
-                    parenDepth--;
-                } else {
-                    openParenIndex = i;
-                    break;
-                }
-            } else if (char === ',' && parenDepth === 0) {
-                commaCount++;
-            }
-        }
-
-        if (openParenIndex === -1) return null;
-
-        // Extract the function call expression preceding the '('
-        const beforeParen = textBeforeCursor.substring(0, openParenIndex).trim();
-        const fnMatch = beforeParen.match(/([a-zA-Z0-9_.]+)$/);
-        if (!fnMatch) return null;
-
-        const fnName = fnMatch[1];
         const projectRoot = this.findProjectRoot(document.uri);
         const allItems = this.getAllActiveApiItems(projectRoot);
 
-        const match = allItems.find(i => i.label === fnName || i.label.split('.').pop() === fnName);
+        const match = allItems.find(i => i.label === callInfo.functionName || i.label.split('.').pop() === callInfo.functionName);
         if (!match || !match.parameters || match.parameters.length === 0) return null;
 
         const sigHelp = new vscode.SignatureHelp();
@@ -485,7 +569,7 @@ export class MicroScriptCompletionProvider implements
 
         sigHelp.signatures = [sigInfo];
         sigHelp.activeSignature = 0;
-        sigHelp.activeParameter = Math.min(commaCount, match.parameters.length - 1);
+        sigHelp.activeParameter = Math.min(callInfo.activeParameterIndex, match.parameters.length - 1);
 
         return sigHelp;
     }

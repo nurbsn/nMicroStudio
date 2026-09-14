@@ -2,6 +2,15 @@
 
 All notable changes to the **MicroStudio for VS Code** extension will be documented in this file.
 
+## [0.1.14] - 2026-09-14
+
+### Fixed & Improved
+- **Parameter Tooltips on Hover**: Hovering over any function or anywhere inside its argument list now displays the full method signature, highlights the active parameter, and shows detailed argument docs.
+- **F5 Launch Integration**: Pressing F5 inside MicroScript files now directly opens the microStudio Preview instead of showing the "No extension for debugging" dialog.
+- **Top-level Namespace Hover**: Added overview tooltips when hovering directly over `screen`, `audio`, `mouse`, `touch`, `keyboard`, `storage`, and `system`.
+
+---
+
 ## [0.1.13] - 2026-09-14
 
 ### Added

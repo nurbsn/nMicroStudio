@@ -36,6 +36,16 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerSignatureHelpProvider('microscript', completionProvider, '(', ',')
     );
 
+    // Register F5 Debug / Run hook to launch microStudio Preview
+    context.subscriptions.push(
+        vscode.debug.registerDebugConfigurationProvider('microscript', {
+            resolveDebugConfiguration(folder: vscode.WorkspaceFolder | undefined, config: vscode.DebugConfiguration): vscode.ProviderResult<vscode.DebugConfiguration> {
+                vscode.commands.executeCommand('microstudio.preview');
+                return null; // Cancel default debugger session, we launched the preview
+            }
+        })
+    );
+
     // Register Preview command
     context.subscriptions.push(vscode.commands.registerCommand('microstudio.preview', async () => {
         let projectRootPath: string | undefined;

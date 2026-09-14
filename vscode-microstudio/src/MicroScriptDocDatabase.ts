@@ -86,6 +86,13 @@ export const BUILTIN_API_DATABASE: ApiDocItem[] = [
 
     // --- SCREEN & GRAPHICS ---
     {
+        label: 'screen',
+        kind: vscode.CompletionItemKind.Module,
+        detail: 'screen',
+        doc: '🖥️ **microStudio Screen API**\n\nGłówny obiekt graficzny odpowiedzialny za renderowanie grafiki 2D i 3D, czyszczenie ekranu (`screen.clear`), rysowanie sprajtów (`screen.drawSprite`), map kafelkowych (`screen.drawMap`), figur wektorowych (`screen.fillRect`, `screen.drawRound`) oraz tekstu (`screen.drawText`).',
+        category: 'screen'
+    },
+    {
         label: 'screen.width',
         kind: vscode.CompletionItemKind.Property,
         detail: 'screen.width',
