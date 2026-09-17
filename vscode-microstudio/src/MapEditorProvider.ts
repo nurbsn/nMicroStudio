@@ -324,62 +324,7 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
                 </style>
             </head>
             <body>
-                <div id="maps-section">
-                    <div class="maps-left">
-                        <div class="assets-bar" id="map-asset-bar">
-                            <div class="create-asset-button"><i class="fa fa-plus-square"></i> Map</div>
-                            <i class="fa fa-folder-plus create-folder-button" title="New Folder"></i>
-                        </div>
-                        <div class="create-asset-button" id="create-map-button" style="display:none"><i class="fa fa-plus-square"></i> Add Map</div>
-                        <div class="assetlist" id="maplist"><div class="asset-list" id="map-list"></div></div>
-                    </div>
-                    <div class="maps-splitbar"></div>
-                    <div class="maps-right">
-                        <div class="mapinfo" id="mapinfo">
-                            <input type="text" value="" id="map-name"/>
-                            <div class="validate-button-container" id="map-name-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div>
-                            <span>&nbsp;&nbsp;Map Size</span>
-                            <input type="text" value="16" id="map-width"/><span>x</span><input type="text" value="10" id="map-height"/>
-                            <div class="validate-button-container" id="map-size-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div>
-                            <span>&nbsp;&nbsp;Block Size</span>
-                            <input type="text" value="16" id="map-block-width"/><span>x</span><input type="text" value="16" id="map-block-height"/>
-                            <div class="validate-button-container" id="map-blocksize-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div>
-                            <div class="buttons">
-                                <div id="save-map-btn" title="Save Map" style="position:relative;"><i class="fa fa-save"></i><span id="save-dot" style="display:none; color:#f00; font-size:10px; position:absolute; top:-4px; right:-4px;">●</span></div>
-                                <div id="undo-map" title="Undo"><i class="fa fa-undo"></i></div>
-                                <div id="redo-map" title="Redo"><i class="fa fa-redo"></i></div>
-                                <div id="copy-map" title="Copy"><i class="fa fa-copy"></i></div>
-                                <div id="cut-map" title="Cut"><i class="fa fa-cut"></i></div>
-                                <div id="paste-map" title="Paste"><i class="fa fa-paste"></i></div>
-                                <div id="delete-map" title="Clear Map"><i class="fa fa-trash"></i></div>
-                            </div>
-                        </div>
-                        <div id="map-editor-locked"></div>
-                        <div id="mapeditor-container">
-                            <div class="mapeditor" id="mapeditor">
-                                <div id="mapeditor-wrapper"></div>
-                                <div id="mapeditor-bottombar">
-                                    <div class="pick-color-button" id="map-background-color" title="Background"></div>
-                                    <select id="map-underlay-select"></select>
-                                    <div id="map-zoom-controls">
-                                        <div class="zoom-btn" id="map-zoom-out" title="Zoom Out (-)"><i class="fa fa-search-minus"></i></div>
-                                        <div class="zoom-label" id="map-zoom-label" title="Reset Zoom">100%</div>
-                                        <div class="zoom-btn" id="map-zoom-in" title="Zoom In (+)"><i class="fa fa-search-plus"></i></div>
-                                        <div class="zoom-btn" id="map-zoom-fit" title="Fit to Screen"><i class="fa fa-compress-arrows-alt"></i></div>
-                                        <div class="zoom-btn" id="map-minimap-btn" title="Toggle Minimap"><i class="fa fa-map"></i></div>
-                                    </div>
-                                    <div class="asset-code-tip" id="map-code-tip"><div><input type="text" spellcheck="false" readonly="readonly"/><i class="fa fa-copy" title="Copy Code"></i></div></div>
-                                    <div class="editor-coordinates" id="map-coordinates"></div>
-                                </div>
-                            </div>
-                            <div class="mapeditor-splitbar"></div>
-                            <div class="mapbar" id="mapbar" tabindex="1">
-                                <div class="map-tilepicker" id="map-tilepicker"></div>
-                                <div class="assetlist map-sprite-list" id="map-sprite-list"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div id="maps-section"><div class="maps-left"><div class="assets-bar" id="map-asset-bar"><div class="create-asset-button"><i class="fa fa-plus-square"></i> Map</div><i class="fa fa-folder-plus create-folder-button" title="New Folder"></i></div><div class="create-asset-button" id="create-map-button" style="display:none"><i class="fa fa-plus-square"></i> Add Map</div><div class="assetlist" id="maplist"><div class="asset-list" id="map-list"></div></div></div><div class="maps-splitbar"></div><div class="maps-right"><div class="mapinfo" id="mapinfo"><input type="text" value="" id="map-name"/><div class="validate-button-container" id="map-name-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div><span>&nbsp;&nbsp;Map Size</span><input type="text" value="16" id="map-width"/><span>x</span><input type="text" value="10" id="map-height"/><div class="validate-button-container" id="map-size-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div><span>&nbsp;&nbsp;Block Size</span><input type="text" value="16" id="map-block-width"/><span>x</span><input type="text" value="16" id="map-block-height"/><div class="validate-button-container" id="map-blocksize-button"><div class="validate-button"><i class="fa fa-check"></i> Apply</div></div><div class="buttons"><div id="save-map-btn" title="Save Map" style="position:relative;"><i class="fa fa-save"></i><span id="save-dot" style="display:none; color:#f00; font-size:10px; position:absolute; top:-4px; right:-4px;">●</span></div><div id="undo-map" title="Undo"><i class="fa fa-undo"></i></div><div id="redo-map" title="Redo"><i class="fa fa-redo"></i></div><div id="copy-map" title="Copy"><i class="fa fa-copy"></i></div><div id="cut-map" title="Cut"><i class="fa fa-cut"></i></div><div id="paste-map" title="Paste"><i class="fa fa-paste"></i></div><div id="delete-map" title="Clear Map"><i class="fa fa-trash"></i></div></div></div><div id="map-editor-locked"></div><div id="mapeditor-container"><div class="mapeditor" id="mapeditor"><div id="mapeditor-wrapper"></div><div id="mapeditor-bottombar"><div class="pick-color-button" id="map-background-color" title="Background"></div><select id="map-underlay-select"></select><div id="map-zoom-controls"><div class="zoom-btn" id="map-zoom-out" title="Zoom Out (-)"><i class="fa fa-search-minus"></i></div><div class="zoom-label" id="map-zoom-label" title="Reset Zoom">100%</div><div class="zoom-btn" id="map-zoom-in" title="Zoom In (+)"><i class="fa fa-search-plus"></i></div><div class="zoom-btn" id="map-zoom-fit" title="Fit to Screen"><i class="fa fa-compress-arrows-alt"></i></div><div class="zoom-btn" id="map-minimap-btn" title="Toggle Minimap"><i class="fa fa-map"></i></div></div><div class="asset-code-tip" id="map-code-tip"><div><input type="text" spellcheck="false" readonly="readonly"/><i class="fa fa-copy" title="Copy Code"></i></div></div><div class="editor-coordinates" id="map-coordinates"></div></div></div><div class="mapeditor-splitbar"></div><div class="mapbar" id="mapbar" tabindex="1"><div class="map-tilepicker" id="map-tilepicker"></div><div class="assetlist map-sprite-list" id="map-sprite-list"></div></div></div></div></div>
                 
                 <script>
                     const acquireVsCodeApi = window.acquireVsCodeApi;

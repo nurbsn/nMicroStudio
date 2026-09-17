@@ -3,9 +3,12 @@ this.SplitBar = class SplitBar {
     this.id = id;
     this.type = type;
     this.element = document.getElementById(this.id);
-    this.side1 = this.element.childNodes[0];
-    this.splitbar = this.element.childNodes[1];
-    this.side2 = this.element.childNodes[2];
+    if (!this.element) return;
+    const children = Array.from(this.element.children);
+    this.side1 = children[0];
+    this.splitbar = children[1];
+    this.side2 = children[2];
+    if (!this.side1 || !this.splitbar || !this.side2) return;
     this.position = 50;
     this.closed1 = false;
     this.closed2 = false;
@@ -116,6 +119,9 @@ this.SplitBar = class SplitBar {
 
   update() {
     var h, h1, h2, h3, w, w1, w2, w3;
+    if (!this.element || !this.side1 || !this.splitbar || !this.side2) {
+      return;
+    }
     if (this.element.clientWidth === 0 || this.element.clientHeight === 0) {
       return;
     }
