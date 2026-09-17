@@ -54,6 +54,9 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
 
         await loadAllSprites();
 
+        let lastKnownText = document.getText();
+        let isLocalChange = false;
+
         function updateWebview() {
             webviewPanel.webview.postMessage({
                 type: 'update',
@@ -61,10 +64,9 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
             });
         }
 
-        let isLocalChange = false;
-
         const updateTextDocument = async (json: string) => {
             if (document.getText().trim() === json.trim()) return;
+            lastKnownText = json.trim();
             isLocalChange = true;
             const edit = new vscode.WorkspaceEdit();
             edit.replace(
@@ -73,12 +75,19 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
                 json
             );
             await vscode.workspace.applyEdit(edit);
-            isLocalChange = false;
+            setTimeout(() => { isLocalChange = false; }, 300);
         };
 
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.uri.toString() === document.uri.toString() && !isLocalChange) {
-                updateWebview();
+            if (e.document.uri.toString() === document.uri.toString()) {
+                const currentText = document.getText().trim();
+                if (currentText === lastKnownText) {
+                    return; // Ignore local edit echo
+                }
+                lastKnownText = currentText;
+                if (!isLocalChange) {
+                    updateWebview();
+                }
             }
         });
 

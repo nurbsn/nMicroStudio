@@ -221,17 +221,23 @@ this.MapView = (function() {
     var parentW = (c && c.clientWidth > 0) ? c.clientWidth : 600;
     var parentH = (c && c.clientHeight > 0) ? c.clientHeight : 400;
 
+    var mapW = (this.map && this.map.width > 0) ? this.map.width : 16;
+    var mapH = (this.map && this.map.height > 0) ? this.map.height : 10;
+    var blockW = (this.map && this.map.block_width > 0) ? this.map.block_width : 16;
+    var blockH = (this.map && this.map.block_height > 0) ? this.map.block_height : 16;
+
     var w = Math.max(80, parentW - 40);
     var h = Math.max(80, parentH - 40);
-    var mapPixelW = Math.max(1, this.map.width * this.map.block_width);
-    var mapPixelH = Math.max(1, this.map.height * this.map.block_height);
+    var mapPixelW = Math.max(1, mapW * blockW);
+    var mapPixelH = Math.max(1, mapH * blockH);
     var ratio = Math.min(w / mapPixelW, h / mapPixelH);
     
-    this.base_width = Math.floor(ratio * mapPixelW);
-    this.base_height = Math.floor(ratio * mapPixelH);
+    this.base_width = Math.max(16, Math.floor(ratio * mapPixelW));
+    this.base_height = Math.max(16, Math.floor(ratio * mapPixelH));
     
-    var scaledW = Math.max(16, Math.floor(this.base_width * this.zoom));
-    var scaledH = Math.max(16, Math.floor(this.base_height * this.zoom));
+    var currentZoom = (this.zoom && this.zoom > 0) ? this.zoom : 1.0;
+    var scaledW = Math.max(16, Math.floor(this.base_width * currentZoom));
+    var scaledH = Math.max(16, Math.floor(this.base_height * currentZoom));
     
     if (scaledW !== this.canvas.width || scaledH !== this.canvas.height) {
       this.canvas.width = scaledW;

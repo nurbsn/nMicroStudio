@@ -117,7 +117,8 @@ export class ResourceCreator {
             height: 16,
             block_width: 16,
             block_height: 16,
-            data: []
+            sprites: [0],
+            data: new Array(24 * 16).fill(0)
         };
 
         fs.writeFileSync(targetFilePath, JSON.stringify(defaultMap, null, 2), 'utf8');

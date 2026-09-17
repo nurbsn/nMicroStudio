@@ -71,9 +71,14 @@ class VSCodeAppMock {
                     if (dot) dot.style.display = "block";
 
                     let content = msg.content;
-                    if (typeof content === 'object') {
+                    if (typeof content === 'string') {
+                        try {
+                            content = JSON.stringify(JSON.parse(content), null, 2);
+                        } catch(e) {}
+                    } else if (typeof content === 'object') {
                         content = JSON.stringify(content, null, 2);
                     }
+                    this.lastSentData = content;
 
                     // Tell VS Code to mark as changed
                     this.vscode.postMessage({
@@ -110,14 +115,30 @@ class VSCodeAppMock {
                     });
                 } else if (item && item.mapview && item.mapview.map) {
                     // It's MapEditor
-                    const data = JSON.stringify(item.mapview.map.save(), null, 2);
+                    let data = item.mapview.map.save();
+                    if (typeof data === 'string') {
+                        try {
+                            data = JSON.stringify(JSON.parse(data), null, 2);
+                        } catch(e) {}
+                    } else if (typeof data === 'object') {
+                        data = JSON.stringify(data, null, 2);
+                    }
+                    this.lastSentData = data;
                     this.vscode.postMessage({
                         type: 'change',
                         data: data
                     });
                 } else if (item && item.save) {
                     // It's ProjectMap / MicroMap
-                    const data = JSON.stringify(item.save(), null, 2);
+                    let data = item.save();
+                    if (typeof data === 'string') {
+                        try {
+                            data = JSON.stringify(JSON.parse(data), null, 2);
+                        } catch(e) {}
+                    } else if (typeof data === 'object') {
+                        data = JSON.stringify(data, null, 2);
+                    }
+                    this.lastSentData = data;
                     this.vscode.postMessage({
                         type: 'change',
                         data: data
@@ -248,12 +269,25 @@ class VSCodeAppMock {
         }
         
         try {
+            // Check if map is already loaded and mapData matches what we just sent
+            if (this.lastSentData && typeof mapData === 'string' && (mapData.trim() === this.lastSentData.trim())) {
+                return;
+            }
+
             const pm = new ProjectMap(this.project, "current");
-            if (typeof mapData === 'object') {
+            if (typeof mapData === 'string') {
+                try {
+                    let parsed = JSON.parse(mapData);
+                    if (typeof parsed === 'string') {
+                        parsed = JSON.parse(parsed);
+                    }
+                    mapData = JSON.stringify(parsed);
+                } catch(e) {}
+            } else if (typeof mapData === 'object') {
                 mapData = JSON.stringify(mapData);
             }
-            if (!mapData || !mapData.trim()) {
-                mapData = JSON.stringify({ width: 16, height: 10, block_width: 16, block_height: 16, sprites: [], data: [] });
+            if (!mapData || !mapData.trim() || mapData === '{}') {
+                mapData = JSON.stringify({ width: 16, height: 10, block_width: 16, block_height: 16, sprites: [0], data: [] });
             }
             pm.load(mapData);
             pm.update();

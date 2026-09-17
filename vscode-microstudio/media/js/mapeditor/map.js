@@ -186,12 +186,16 @@ this.MicroMap = (function() {
 
   MicroMap.prototype.save = function() {
     var data, i, index, j, k, l, list, m, map, n, ref1, ref2, ref3, ref4, s, table;
+    var w = (this.width != null && Number.isInteger(this.width) && this.width > 0) ? this.width : 16;
+    var h = (this.height != null && Number.isInteger(this.height) && this.height > 0) ? this.height : 10;
+    var bw = (this.block_width != null && Number.isInteger(this.block_width) && this.block_width > 0) ? this.block_width : 16;
+    var bh = (this.block_height != null && Number.isInteger(this.block_height) && this.block_height > 0) ? this.block_height : 16;
     index = 1;
     list = [0];
     table = {};
-    for (j = k = 0, ref1 = this.height - 1; k <= ref1; j = k += 1) {
-      for (i = l = 0, ref2 = this.width - 1; l <= ref2; i = l += 1) {
-        s = this.map[i + j * this.width];
+    for (j = k = 0, ref1 = h - 1; k <= ref1; j = k += 1) {
+      for (i = l = 0, ref2 = w - 1; l <= ref2; i = l += 1) {
+        s = this.map ? this.map[i + j * w] : null;
         if ((s != null) && s.length > 0 && (table[s] == null)) {
           list.push(s);
           table[s] = index++;
@@ -199,17 +203,17 @@ this.MicroMap = (function() {
       }
     }
     map = [];
-    for (j = m = 0, ref3 = this.height - 1; m <= ref3; j = m += 1) {
-      for (i = n = 0, ref4 = this.width - 1; n <= ref4; i = n += 1) {
-        s = this.map[i + j * this.width];
-        map[i + j * this.width] = (s != null) && s.length > 0 ? table[s] : 0;
+    for (j = m = 0, ref3 = h - 1; m <= ref3; j = m += 1) {
+      for (i = n = 0, ref4 = w - 1; n <= ref4; i = n += 1) {
+        s = this.map ? this.map[i + j * w] : null;
+        map[i + j * w] = (s != null) && s.length > 0 ? table[s] : 0;
       }
     }
     data = {
-      width: this.width,
-      height: this.height,
-      block_width: this.block_width,
-      block_height: this.block_height,
+      width: w,
+      height: h,
+      block_width: bw,
+      block_height: bh,
       sprites: list,
       data: map
     };
@@ -235,35 +239,55 @@ this.MicroMap = (function() {
 
   MicroMap.prototype.load = function(data, sprites) {
     var i, j, k, l, ref1, ref2, s;
-    data = JSON.parse(data);
-    this.width = data.width;
-    this.height = data.height;
-    this.block_width = data.block_width;
-    this.block_height = data.block_height;
-    for (j = k = 0, ref1 = data.height - 1; k <= ref1; j = k += 1) {
-      for (i = l = 0, ref2 = data.width - 1; l <= ref2; i = l += 1) {
-        s = data.data[i + j * data.width];
-        if (s > 0) {
-          this.map[i + j * data.width] = data.sprites[s];
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+        if (typeof data === "string") {
+          data = JSON.parse(data);
+        }
+      } catch (e) {
+        console.warn("MicroMap load parse error:", e);
+        return;
+      }
+    }
+    if (!data || typeof data !== "object") return;
+    this.width = Number.isInteger(data.width) ? data.width : (this.width || 16);
+    this.height = Number.isInteger(data.height) ? data.height : (this.height || 10);
+    this.block_width = Number.isInteger(data.block_width) ? data.block_width : (this.block_width || 16);
+    this.block_height = Number.isInteger(data.block_height) ? data.block_height : (this.block_height || 16);
+    this.map = [];
+    var spritesList = Array.isArray(data.sprites) ? data.sprites : [0];
+    var dataList = Array.isArray(data.data) ? data.data : [];
+    for (j = k = 0, ref1 = this.height - 1; k <= ref1; j = k += 1) {
+      for (i = l = 0, ref2 = this.width - 1; l <= ref2; i = l += 1) {
+        s = dataList[i + j * this.width];
+        if (s > 0 && spritesList[s] != null) {
+          this.map[i + j * this.width] = spritesList[s];
         } else {
-          this.map[i + j * data.width] = null;
+          this.map[i + j * this.width] = null;
         }
       }
     }
+    this.needs_update = true;
   };
 
   MicroMap.loadMap = function(data, sprites) {
-    var i, j, k, l, map, ref1, ref2, s;
-    data = JSON.parse(data);
-    map = new MicroMap(data.width, data.height, data.block_width, data.block_height, sprites);
-    for (j = k = 0, ref1 = data.height - 1; k <= ref1; j = k += 1) {
-      for (i = l = 0, ref2 = data.width - 1; l <= ref2; i = l += 1) {
-        s = data.data[i + j * data.width];
-        if (s > 0) {
-          map.map[i + j * data.width] = data.sprites[s];
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+        if (typeof data === "string") {
+          data = JSON.parse(data);
         }
+      } catch (e) {
+        data = {};
       }
     }
+    var w = (data && Number.isInteger(data.width)) ? data.width : 16;
+    var h = (data && Number.isInteger(data.height)) ? data.height : 10;
+    var bw = (data && Number.isInteger(data.block_width)) ? data.block_width : 16;
+    var bh = (data && Number.isInteger(data.block_height)) ? data.block_height : 16;
+    var map = new MicroMap(w, h, bw, bh, sprites);
+    map.load(data, sprites);
     return map;
   };
 
