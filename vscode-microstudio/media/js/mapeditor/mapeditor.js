@@ -435,6 +435,7 @@ this.MapEditor = class MapEditor extends Manager {
   currentMapUpdated() {
     this.mapview.update();
     this.mapview.windowResized();
+    this.updateCodeTip();
     return this.updateSizeFields();
   }
 

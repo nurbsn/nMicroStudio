@@ -57,9 +57,21 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
         let lastKnownText = document.getText();
         let isLocalChange = false;
 
+        function getMapName(): string {
+            try {
+                const mapsDir = path.join(projectRoot.fsPath, 'maps');
+                const relPath = path.relative(mapsDir, document.uri.fsPath);
+                if (!relPath.startsWith('..') && !path.isAbsolute(relPath)) {
+                    return relPath.replace(/\.json$/i, '').replace(/[\/\\]/g, '-');
+                }
+            } catch (e) {}
+            return path.basename(document.uri.fsPath, '.json');
+        }
+
         function updateWebview() {
             webviewPanel.webview.postMessage({
                 type: 'update',
+                name: getMapName(),
                 text: document.getText(),
             });
         }

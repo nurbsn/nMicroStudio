@@ -258,7 +258,7 @@ class VSCodeAppMock {
         });
     }
 
-    startMapEditor(mapData) {
+    startMapEditor(mapData, mapName = "map") {
         if (typeof MapEditor === 'undefined') {
             console.error("MapEditor not found!");
             return;
@@ -269,12 +269,28 @@ class VSCodeAppMock {
         }
         
         try {
+            const name = mapName || "map";
+            const displayName = name.replace(/-/g, '/');
+
+            // Set name field in top toolbar
+            const nameField = document.getElementById("map-name");
+            if (nameField) {
+                nameField.value = displayName;
+                nameField.disabled = true; // Renaming is handled via VS Code Explorer
+            }
+            const nameBtn = document.getElementById("map-name-button");
+            if (nameBtn) {
+                nameBtn.style.display = "none";
+            }
+
             // Check if map is already loaded and mapData matches what we just sent
             if (this.lastSentData && typeof mapData === 'string' && (mapData.trim() === this.lastSentData.trim())) {
+                this.mapEditor.selected_map = name;
+                this.mapEditor.updateCodeTip();
                 return;
             }
 
-            const pm = new ProjectMap(this.project, "current");
+            const pm = new ProjectMap(this.project, name + ".json");
             if (typeof mapData === 'string') {
                 try {
                     let parsed = JSON.parse(mapData);
@@ -295,11 +311,21 @@ class VSCodeAppMock {
             
             // Clear existing map list to avoid duplicates
             this.project.map_list = [pm];
-            this.project.map_table = { "current": pm };
+            this.project.map_table = {};
+            this.project.map_table[name] = pm;
+            this.project.map_table[name.replace(/\//g, '-')] = pm;
+            this.project.map_table[name.replace(/-/g, '/')] = pm;
             
-            this.mapEditor.setSelectedMap("current");
+            this.mapEditor.selected_map = name;
+            this.mapEditor.selected_item = name;
+            this.mapEditor.setSelectedMap(name);
             this.mapEditor.rebuildSpriteList();
             this.mapEditor.currentMapUpdated();
+            this.mapEditor.updateCodeTip();
+
+            if (nameField) {
+                nameField.value = displayName;
+            }
 
             if (this.mapEditor.mapeditor_splitbar) {
                 this.mapEditor.mapeditor_splitbar.setPosition(75, false);
@@ -312,6 +338,7 @@ class VSCodeAppMock {
                     }
                     this.mapEditor.mapview.windowResized();
                     this.mapEditor.mapview.update();
+                    this.mapEditor.updateCodeTip();
                 }
             };
 
@@ -334,12 +361,13 @@ window.addEventListener('message', event => {
     } else if (message.type === 'load_sprites') {
         window.mockApp.spritesPromise = window.mockApp.loadSprites(message.sprites);
     } else if (message.type === 'update') {
+        const runStart = () => {
+            window.mockApp.startMapEditor(message.text, message.name);
+        };
         if (window.mockApp.spritesPromise) {
-            window.mockApp.spritesPromise.then(() => {
-                window.mockApp.startMapEditor(message.text);
-            });
+            window.mockApp.spritesPromise.then(runStart);
         } else {
-            window.mockApp.startMapEditor(message.text);
+            runStart();
         }
     } else if (message.type === 'saved') {
         const dot = document.getElementById("save-dot");
