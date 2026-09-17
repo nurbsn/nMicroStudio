@@ -22,12 +22,28 @@ class VSCodeAppMock {
             createFriendColor: () => '#000'
         };
 
-        // Setup save button manually
-        const saveBtn = document.getElementById("save-sprite-btn");
-        if (saveBtn) {
-            saveBtn.addEventListener("click", () => {
+        // Setup save buttons manually
+        const saveSpriteBtn = document.getElementById("save-sprite-btn");
+        if (saveSpriteBtn) {
+            saveSpriteBtn.addEventListener("click", () => {
+                if (this.spriteEditor) {
+                    this.spriteEditor.checkSave(true);
+                }
                 this.vscode.postMessage({ type: 'save_command' });
-                document.getElementById("save-dot").style.display = "none";
+                const dot = document.getElementById("save-dot");
+                if (dot) dot.style.display = "none";
+            });
+        }
+
+        const saveMapBtn = document.getElementById("save-map-btn");
+        if (saveMapBtn) {
+            saveMapBtn.addEventListener("click", () => {
+                if (this.mapEditor) {
+                    this.mapEditor.checkSave(true);
+                }
+                this.vscode.postMessage({ type: 'save_command' });
+                const dot = document.getElementById("save-dot");
+                if (dot) dot.style.display = "none";
             });
         }
 
@@ -54,15 +70,20 @@ class VSCodeAppMock {
                     const dot = document.getElementById("save-dot");
                     if (dot) dot.style.display = "block";
 
+                    let content = msg.content;
+                    if (typeof content === 'object') {
+                        content = JSON.stringify(content, null, 2);
+                    }
+
                     // Tell VS Code to mark as changed
                     this.vscode.postMessage({
                         type: 'change',
-                        data: msg.content, // Could be base64 or JSON
+                        data: content,
                         properties: msg.properties
                     });
                     
                     if (callback) {
-                        callback({ size: msg.content.length });
+                        callback({ size: (typeof content === 'string' ? content.length : 0) });
                     }
                 }
             }
@@ -74,6 +95,9 @@ class VSCodeAppMock {
             isLocked: () => false,
             lockFile: () => {},
             addPendingChange: (item) => {
+                const dot = document.getElementById("save-dot");
+                if (dot) dot.style.display = "block";
+
                 // Determine if item is sprite or map and send to vscode
                 if (item && item.frames && item.frames.length > 0) {
                     // It's a sprite
@@ -81,14 +105,21 @@ class VSCodeAppMock {
                     const dataUrl = canvas.toDataURL("image/png");
                     const base64 = dataUrl.split(',')[1];
                     this.vscode.postMessage({
-                        type: 'save',
+                        type: 'change',
                         data: base64
                     });
-                } else if (item && item.save) {
-                    // It's a map
-                    const data = JSON.stringify(item.save());
+                } else if (item && item.mapview && item.mapview.map) {
+                    // It's MapEditor
+                    const data = JSON.stringify(item.mapview.map.save(), null, 2);
                     this.vscode.postMessage({
-                        type: 'save',
+                        type: 'change',
+                        data: data
+                    });
+                } else if (item && item.save) {
+                    // It's ProjectMap / MicroMap
+                    const data = JSON.stringify(item.save(), null, 2);
+                    this.vscode.postMessage({
+                        type: 'change',
                         data: data
                     });
                 }
