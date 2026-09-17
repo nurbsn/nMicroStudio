@@ -191,10 +191,24 @@ class VSCodeAppMock {
                 return resolve();
             }
 
-            const total = Object.keys(spritesData).length;
+            const names = Object.keys(spritesData);
+            const total = names.length;
             let loaded = 0;
 
-            for (let name in spritesData) {
+            const checkDone = () => {
+                loaded++;
+                if (loaded === total) {
+                    if (this.mapEditor) {
+                        this.mapEditor.rebuildSpriteList();
+                        if (this.mapEditor.mapview) {
+                            this.mapEditor.mapview.update();
+                        }
+                    }
+                    resolve();
+                }
+            };
+
+            for (let name of names) {
                 const img = new Image();
                 img.onload = () => {
                     const ps = new ProjectSprite(this.project, name + ".png", img.width, img.height);
@@ -212,17 +226,11 @@ class VSCodeAppMock {
                         this.project.sprite_table[name.replace(/\//g, '-')] = ps;
                     }
                     this.project.sprite_list.push(ps);
-
-                    loaded++;
-                    if (loaded === total) {
-                        if (this.mapEditor) {
-                            this.mapEditor.rebuildSpriteList();
-                            if (this.mapEditor.mapview) {
-                                this.mapEditor.mapview.update();
-                            }
-                        }
-                        resolve();
-                    }
+                    checkDone();
+                };
+                img.onerror = () => {
+                    console.warn("Failed to load sprite:", name);
+                    checkDone();
                 };
                 img.src = 'data:image/png;base64,' + spritesData[name].data;
             }
@@ -237,11 +245,16 @@ class VSCodeAppMock {
 
         if (!this.mapEditor) {
             this.mapEditor = new MapEditor(this);
-            window.dispatchEvent(new Event('resize'));
         }
         
         try {
             const pm = new ProjectMap(this.project, "current");
+            if (typeof mapData === 'object') {
+                mapData = JSON.stringify(mapData);
+            }
+            if (!mapData || !mapData.trim()) {
+                mapData = JSON.stringify({ width: 16, height: 10, block_width: 16, block_height: 16, sprites: [], data: [] });
+            }
             pm.load(mapData);
             pm.update();
             pm.updateCanvases();
@@ -253,6 +266,24 @@ class VSCodeAppMock {
             this.mapEditor.setSelectedMap("current");
             this.mapEditor.rebuildSpriteList();
             this.mapEditor.currentMapUpdated();
+
+            if (this.mapEditor.mapeditor_splitbar) {
+                this.mapEditor.mapeditor_splitbar.setPosition(75, false);
+            }
+
+            const refreshView = () => {
+                if (this.mapEditor && this.mapEditor.mapview) {
+                    if (this.mapEditor.mapeditor_splitbar) {
+                        this.mapEditor.mapeditor_splitbar.update();
+                    }
+                    this.mapEditor.mapview.windowResized();
+                    this.mapEditor.mapview.update();
+                }
+            };
+
+            refreshView();
+            setTimeout(refreshView, 50);
+            setTimeout(refreshView, 200);
         } catch(e) {
             console.error("Failed to parse map JSON", e);
         }

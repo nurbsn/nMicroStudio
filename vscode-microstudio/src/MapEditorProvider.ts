@@ -244,7 +244,11 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
                     }
                     #mapeditor {
                         position: absolute !important;
+                        top: 0 !important;
+                        bottom: 0 !important;
+                        left: 0 !important;
                         overflow: hidden !important;
+                        z-index: 1 !important;
                     }
                     #mapeditor-wrapper {
                         position: absolute !important;
@@ -256,7 +260,11 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
                         z-index: 1 !important;
                     }
                     #mapeditor-wrapper canvas {
+                        box-shadow: 0 0 30px #000 !important;
+                        border: solid 1px rgba(255, 255, 255, 0.2) !important;
+                        border-radius: 4px !important;
                         display: block !important;
+                        cursor: crosshair !important;
                     }
                     #mapeditor-bottombar {
                         position: absolute !important;
@@ -269,11 +277,35 @@ export class MapEditorProvider implements vscode.CustomTextEditorProvider {
                     }
                     .mapeditor-splitbar {
                         z-index: 60 !important;
+                        position: absolute !important;
+                        top: 0 !important;
+                        bottom: 0 !important;
                     }
                     .mapbar {
                         position: absolute !important;
+                        top: 0 !important;
+                        bottom: 0 !important;
+                        right: 0 !important;
                         z-index: 50 !important;
                         background: rgba(0, 0, 0, 0.4) !important;
+                        overflow-y: auto !important;
+                    }
+                    .map-tilepicker {
+                        text-align: center !important;
+                    }
+                    .map-tilepicker canvas {
+                        margin: 10px auto !important;
+                        box-shadow: 0 0 3px #FFF !important;
+                        cursor: crosshair !important;
+                    }
+                    .map-sprite-list {
+                        position: absolute !important;
+                        top: 140px !important;
+                        left: 0 !important;
+                        right: 0 !important;
+                        bottom: 0 !important;
+                        text-align: center !important;
+                        padding: 2px !important;
                         overflow-y: auto !important;
                     }
                     #map-minimap-container {

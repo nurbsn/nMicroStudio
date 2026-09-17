@@ -213,16 +213,18 @@ this.MapView = (function() {
     this.canvas.style.left = left + "px";
     this.canvas.style.top = top + "px";
     this.canvas.style.margin = "0px";
+    this.canvas.style.display = "block";
   };
 
   MapView.prototype.windowResized = function() {
     var c = this.canvas.parentElement;
-    if (c == null || c.clientWidth <= 0) return;
+    var parentW = (c && c.clientWidth > 0) ? c.clientWidth : 600;
+    var parentH = (c && c.clientHeight > 0) ? c.clientHeight : 400;
 
-    var w = c.clientWidth - 40;
-    var h = c.clientHeight - 40;
-    var mapPixelW = this.map.width * this.map.block_width;
-    var mapPixelH = this.map.height * this.map.block_height;
+    var w = Math.max(80, parentW - 40);
+    var h = Math.max(80, parentH - 40);
+    var mapPixelW = Math.max(1, this.map.width * this.map.block_width);
+    var mapPixelH = Math.max(1, this.map.height * this.map.block_height);
     var ratio = Math.min(w / mapPixelW, h / mapPixelH);
     
     this.base_width = Math.floor(ratio * mapPixelW);
